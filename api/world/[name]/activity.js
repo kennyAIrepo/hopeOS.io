@@ -13,6 +13,7 @@
 import { put, list } from '@vercel/blob';
 import { randomUUID } from 'crypto';
 import { blobToken } from '../../_blob.js';
+import { requireAdmin } from '../../_admin.js';
 
 function slugify(name) {
   return String(name || '').trim().replace(/[^\w-]+/g, '_').slice(0, 80);
@@ -56,6 +57,7 @@ export default async function handler(req, res) {
       });
       res.status(200).json({ ok: true });
     } else if (req.method === 'GET') {
+      if (!requireAdmin(req, res)) return;                 // chat logs are owner-only
       const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
       const since = parseInt(req.query.since, 10) || 0;
       const { blobs } = await list({ prefix: dir, limit: 1000, token });

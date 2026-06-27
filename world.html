@@ -287,6 +287,31 @@ video.h{display:none}
   <button data-a="clr">✕ Deselect</button>
 </div>
 
+<!-- Report-a-bug: captures description + this session + a screenshot + live world state,
+     files it to the owner backlog (/api/bugs) which auto-opens a GitHub issue. -->
+<button id="bugBtn" title="Report a bug — captures your view + world state for the developers"
+  style="position:fixed;bottom:14px;right:14px;z-index:30;padding:7px 13px;background:rgba(60,30,30,.5);
+  border:1px solid rgba(220,120,120,.35);border-radius:8px;color:#f9b;font-size:11px;cursor:pointer;
+  font-family:'Space Grotesk',system-ui,sans-serif;backdrop-filter:blur(6px)">🐛 report bug</button>
+<div id="bugModal" style="position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
+  background:rgba(2,5,8,.66);backdrop-filter:blur(4px);font-family:'Space Grotesk',system-ui,sans-serif">
+  <div style="width:min(440px,92vw);background:rgba(8,16,12,.96);border:1px solid rgba(220,120,120,.35);
+    border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:11px;box-shadow:0 20px 60px rgba(0,0,0,.6)">
+    <div style="font-size:13px;letter-spacing:2px;color:#f9b">🐛 REPORT A BUG</div>
+    <div style="font-size:11px;color:#8a9;line-height:1.5">Describe what went wrong. We auto-attach a screenshot of your current view and the live world state — no need to explain those.</div>
+    <textarea id="bugDesc" placeholder="e.g. the pedestal copy is a box but I changed it to a column…" spellcheck="false"
+      style="min-height:96px;resize:vertical;background:rgba(2,7,5,.7);border:1px solid rgba(220,120,120,.3);color:#eafff1;
+      border-radius:9px;padding:10px;font-family:inherit;font-size:13px;outline:none"></textarea>
+    <label style="font-size:11px;color:#8a9;display:flex;align-items:center;gap:7px">
+      <input type="checkbox" id="bugShot" checked> attach screenshot of my view</label>
+    <div id="bugStat" style="font-size:11px;min-height:15px;color:#8a9"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="bugCancel" style="background:rgba(40,40,46,.6);border:1px solid rgba(150,150,160,.25);color:#bcd;border-radius:8px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:12px">cancel</button>
+      <button id="bugSend" style="background:linear-gradient(135deg,#d16a6a,#b84f4f);border:none;color:#fff;border-radius:8px;padding:7px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600">send report</button>
+    </div>
+  </div>
+</div>
+
 <!-- Sketchfab browse panel (minimal: just thumbnails) -->
 <div id="sfPanel" style="position:fixed;top:14px;right:14px;z-index:35;display:none;flex-direction:column;
   gap:8px;width:min(440px,88vw);max-height:82vh;background:rgba(5,12,9,.9);padding:12px;border-radius:12px;
@@ -844,6 +869,52 @@ function logActivity(role, text) {
     }).catch(() => {});
   } catch { /* never let logging break the UI */ }
 }
+
+// ── In-world bug reporter ───────────────────────────────────────────────────────
+// One tap captures the user's description + this session + a screenshot of the live
+// view + the full world state, and POSTs to /api/bugs (owner backlog → auto GitHub issue).
+function openBugModal() {
+  const d = document.getElementById('bugDesc');
+  document.getElementById('bugStat').textContent = '';
+  document.getElementById('bugSend').disabled = false;
+  document.getElementById('bugModal').style.display = 'flex';
+  if (d) { d.value = ''; setTimeout(() => d.focus(), 30); }
+}
+function closeBugModal() { document.getElementById('bugModal').style.display = 'none'; }
+async function sendBugReport() {
+  const desc = (document.getElementById('bugDesc').value || '').trim();
+  const stat = document.getElementById('bugStat');
+  if (!desc) { stat.style.color = '#f9b'; stat.textContent = 'please describe the problem first.'; return; }
+  const sendBtn = document.getElementById('bugSend');
+  sendBtn.disabled = true; stat.style.color = '#8a9'; stat.textContent = 'capturing view + world state…';
+  let meta = {}, worldState = null, shot = null;
+  try {
+    const p = world && world.getAvatarPosition ? world.getAvatarPosition() : null;
+    meta = {
+      pos: p ? [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)] : null,
+      mode: agentMode, objectCount: world && world.assets ? world.assets.length : null,
+      ua: navigator.userAgent, url: location.href,
+    };
+    worldState = world ? { objects: world.snapshot(), scene: (world.getSceneState ? world.getSceneState() : null) } : null;
+    if (document.getElementById('bugShot').checked) { try { shot = captureThumb(); } catch { /* optional */ } }
+  } catch { /* best-effort capture */ }
+  const slug = (currentWorld && (currentWorld.publishedAs || currentWorld.name)) || (world && world.modelLabel) || 'unpublished';
+  try {
+    const r = await fetch('/api/bugs', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ world: slug, description: desc, sessionId: _sessionId, meta, worldState, screenshot: shot }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { stat.style.color = '#f9b'; stat.textContent = '⚠ ' + (j.error || ('failed (' + r.status + ')')); sendBtn.disabled = false; return; }
+    stat.style.color = '#7dffb0';
+    stat.textContent = j.filed ? '✅ reported — GitHub issue opened. thank you!' : '✅ reported to the backlog. thank you!';
+    setTimeout(closeBugModal, 1700);
+  } catch (e) { stat.style.color = '#f9b'; stat.textContent = '⚠ ' + e.message; sendBtn.disabled = false; }
+}
+document.getElementById('bugBtn').addEventListener('click', openBugModal);
+document.getElementById('bugCancel').addEventListener('click', closeBugModal);
+document.getElementById('bugSend').addEventListener('click', sendBugReport);
+document.getElementById('bugModal').addEventListener('click', (e) => { if (e.target.id === 'bugModal') closeBugModal(); });
 
 function sayAI(msg, who) {
   if (msg == null || msg === '') return;

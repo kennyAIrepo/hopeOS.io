@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>hopeOS — admin</title>
+<style>
+  :root{--g:#5dff9b;--g2:#39ff5a;--dim:#5d7468;--bg:#04070a;--panel:rgba(5,12,9,.78)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:#d7ecdd;font-family:'Space Grotesk',system-ui,sans-serif;min-height:100vh}
+  a{color:var(--g)}
+  header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:14px 20px;
+    background:rgba(4,7,10,.9);backdrop-filter:blur(8px);border-bottom:1px solid rgba(73,231,134,.2)}
+  header h1{font-size:15px;letter-spacing:3px;color:var(--g);text-shadow:0 0 12px rgba(93,255,155,.4);font-weight:600}
+  header .sp{flex:1}
+  .tab{padding:7px 16px;background:rgba(7,16,12,.6);border:1px solid rgba(73,231,134,.25);color:#9fe6bd;
+    border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;letter-spacing:1px}
+  .tab.on{background:rgba(93,255,155,.18);color:#eafff1;border-color:var(--g)}
+  input,button,select{font-family:inherit}
+  .key{background:rgba(2,7,5,.7);border:1px solid rgba(73,231,134,.3);color:#d7f5e2;border-radius:7px;padding:7px 10px;font-size:12px;outline:none}
+  .key:focus{border-color:var(--g)}
+  .btn{background:linear-gradient(135deg,#36d178,#21b85f);border:none;color:#02110a;border-radius:7px;padding:7px 14px;font-weight:600;cursor:pointer;font-size:12px}
+  .btn.ghost{background:rgba(7,16,12,.6);border:1px solid rgba(73,231,134,.3);color:#9fe6bd;font-weight:400}
+  main{padding:18px 20px;max-width:1100px;margin:0 auto}
+  .gate{max-width:420px;margin:14vh auto;text-align:center;display:flex;flex-direction:column;gap:14px}
+  .gate p{color:var(--dim);font-size:12px;line-height:1.6}
+  .hide{display:none!important}
+  .bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .muted{color:var(--dim);font-size:11px}
+  /* chat feed */
+  #feed{display:flex;flex-direction:column;gap:7px;font-size:13px}
+  .row{display:flex;gap:10px;padding:8px 11px;border-radius:8px;border:1px solid transparent;line-height:1.45}
+  .row.user{background:rgba(93,255,155,.07);border-color:rgba(73,231,134,.18)}
+  .row.agent{background:rgba(80,140,220,.06);border-color:rgba(80,140,220,.16)}
+  .row .ts{color:var(--dim);font-size:10px;white-space:nowrap;font-variant-numeric:tabular-nums;padding-top:2px}
+  .row .tag{font-size:10px;white-space:nowrap;padding-top:2px}
+  .row.user .tag{color:var(--g)}.row.agent .tag{color:#9bf}
+  .row .tx{flex:1;word-break:break-word;white-space:pre-wrap}
+  /* bugs */
+  #bugs{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .bug{background:var(--panel);border:1px solid rgba(73,231,134,.25);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+  .bug img{width:100%;aspect-ratio:16/10;object-fit:cover;background:#02110a;border-bottom:1px solid rgba(73,231,134,.15)}
+  .bug .body{padding:12px;display:flex;flex-direction:column;gap:7px}
+  .bug .desc{font-size:13px;color:#eafff1;line-height:1.45}
+  .bug .meta{font-size:10px;color:var(--dim);line-height:1.6}
+  .bug .meta b{color:#9fe6bd;font-weight:600}
+  .bug .links{display:flex;gap:8px;align-items:center;margin-top:2px}
+  .pill{font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid rgba(73,231,134,.3);color:#9fe6bd}
+  .pill.filed{color:var(--g2);border-color:rgba(57,255,90,.5)}
+  .pill.nofile{color:#f0a35a;border-color:rgba(240,163,90,.4)}
+  details summary{cursor:pointer;color:var(--dim);font-size:10px}
+  details pre{margin-top:6px;background:rgba(2,7,5,.7);border:1px solid rgba(73,231,134,.12);border-radius:7px;padding:8px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10px;max-height:240px;overflow:auto;color:#9fb3a6;white-space:pre-wrap}
+  .err{color:#ff9a9a;font-size:12px}
+</style>
+</head>
+<body>
+<!-- ── Login gate ───────────────────────────────────────────── -->
+<div id="gate" class="gate">
+  <h1 style="letter-spacing:4px;color:var(--g)">hopeOS · ADMIN</h1>
+  <p>Owner dashboard — live "ask the world" chats and filed bug reports.<br>Enter the admin key (set as <code>ADMIN_KEY</code> in Vercel).</p>
+  <input id="gateKey" class="key" type="password" placeholder="admin key" autocomplete="current-password">
+  <button class="btn" onclick="login()">Enter</button>
+  <div id="gateErr" class="err"></div>
+</div>
+
+<!-- ── Dashboard ────────────────────────────────────────────── -->
+<div id="app" class="hide">
+  <header>
+    <h1>hopeOS · ADMIN</h1>
+    <span class="tab on" id="tabChats" onclick="show('chats')">LIVE CHATS</span>
+    <span class="tab" id="tabBugs" onclick="show('bugs')">BUGS</span>
+    <span class="sp"></span>
+    <button class="btn ghost" onclick="logout()">sign out</button>
+  </header>
+  <main>
+    <!-- Chats -->
+    <section id="paneChats">
+      <div class="bar">
+        <span class="muted">world</span>
+        <input id="worldSlug" class="key" value="aabcart_2_2" style="width:240px">
+        <button class="btn ghost" onclick="restartFeed()">watch</button>
+        <label class="muted"><input type="checkbox" id="autoPoll" checked> live (4s)</label>
+        <span class="sp"></span>
+        <span id="feedStat" class="muted"></span>
+      </div>
+      <div id="feed"></div>
+    </section>
+    <!-- Bugs -->
+    <section id="paneBugs" class="hide">
+      <div class="bar">
+        <button class="btn ghost" onclick="loadBugs()">refresh</button>
+        <span id="bugStat" class="muted"></span>
+      </div>
+      <div id="bugs"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const LS = 'h0p3_admin_key';
+let KEY = localStorage.getItem(LS) || '';
+let pollTimer = null, since = 0, seeded = false;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const clock = ts => new Date(ts).toLocaleTimeString();
+
+async function api(path) {
+  const r = await fetch(path + (path.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(KEY), { cache: 'no-store' });
+  if (r.status === 401 || r.status === 503) { const j = await r.json().catch(()=>({})); throw new Error(j.error || ('auth ' + r.status)); }
+  return r.json();
+}
+
+function login() {
+  KEY = $('gateKey').value.trim();
+  if (!KEY) return;
+  // validate against a gated endpoint
+  fetch('/api/bugs?key=' + encodeURIComponent(KEY), { cache: 'no-store' }).then(r => {
+    if (r.ok) { localStorage.setItem(LS, KEY); enter(); }
+    else r.json().then(j => $('gateErr').textContent = j.error || ('rejected (' + r.status + ')')).catch(()=> $('gateErr').textContent = 'rejected (' + r.status + ')');
+  }).catch(e => $('gateErr').textContent = e.message);
+}
+function logout() { localStorage.removeItem(LS); KEY = ''; location.reload(); }
+function enter() { $('gate').classList.add('hide'); $('app').classList.remove('hide'); restartFeed(); }
+
+function show(which) {
+  const chats = which === 'chats';
+  $('paneChats').classList.toggle('hide', !chats);
+  $('paneBugs').classList.toggle('hide', chats);
+  $('tabChats').classList.toggle('on', chats);
+  $('tabBugs').classList.toggle('on', !chats);
+  if (chats) restartFeed(); else { stopFeed(); loadBugs(); }
+}
+
+// ── Live chat feed ──
+function stopFeed() { if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
+function restartFeed() {
+  stopFeed(); since = 0; seeded = false; $('feed').innerHTML = '';
+  pollFeed();
+  pollTimer = setInterval(() => { if ($('autoPoll').checked) pollFeed(); }, 4000);
+}
+async function pollFeed() {
+  const slug = $('worldSlug').value.trim(); if (!slug) return;
+  try {
+    const { events = [] } = await api('/api/world/' + encodeURIComponent(slug) + '/activity?since=' + since + '&limit=200');
+    for (const e of events) appendRow(e);
+    if (events.length) since = events[events.length - 1].ts;
+    if (!seeded && !events.length) $('feed').innerHTML = '<div class="muted">no chats logged yet — waiting…</div>';
+    seeded = true;
+    $('feedStat').textContent = 'updated ' + new Date().toLocaleTimeString();
+  } catch (e) { $('feedStat').innerHTML = '<span class="err">' + esc(e.message) + '</span>'; stopFeed(); }
+}
+function appendRow(e) {
+  if (!seeded) $('feed').innerHTML = '';   // clear the "waiting" placeholder on first real row
+  const d = document.createElement('div');
+  d.className = 'row ' + (e.role === 'user' ? 'user' : 'agent');
+  d.innerHTML = '<span class="ts">' + clock(e.ts) + '</span>' +
+    '<span class="tag">' + (e.role === 'user' ? '🟢 ' + esc(e.sessionId) : '🤖 agent') + '</span>' +
+    '<span class="tx">' + esc(e.text) + '</span>';
+  $('feed').appendChild(d);
+  const f = $('feed'); f.scrollTop = f.scrollHeight;
+}
+
+// ── Bugs board ──
+async function loadBugs() {
+  $('bugStat').textContent = 'loading…';
+  try {
+    const { bugs = [], count = 0 } = await api('/api/bugs');
+    $('bugStat').textContent = count + ' report' + (count === 1 ? '' : 's');
+    $('bugs').innerHTML = bugs.map(bugCard).join('') || '<div class="muted">no bug reports yet.</div>';
+  } catch (e) { $('bugStat').innerHTML = '<span class="err">' + esc(e.message) + '</span>'; }
+}
+function bugCard(b) {
+  const g = b.github || {};
+  const issue = g.filed && g.issueUrl
+    ? '<a class="pill filed" href="' + esc(g.issueUrl) + '" target="_blank">issue #' + esc(g.issueNumber) + ' ↗</a>'
+    : '<span class="pill nofile" title="' + esc(g.reason || '') + '">not filed</span>';
+  const m = b.meta || {};
+  return '<div class="bug">' +
+    (b.screenshotUrl ? '<a href="' + esc(b.screenshotUrl) + '" target="_blank"><img src="' + esc(b.screenshotUrl) + '" loading="lazy"></a>' : '') +
+    '<div class="body">' +
+      '<div class="desc">' + esc(b.description) + '</div>' +
+      '<div class="meta"><b>world</b> ' + esc(b.world) + ' · <b>session</b> ' + esc(b.sessionId) + '<br>' +
+        '<b>when</b> ' + new Date(b.ts).toLocaleString() + '<br>' +
+        '<b>pos</b> ' + esc(JSON.stringify(m.pos || null)) + ' · <b>mode</b> ' + esc(m.mode || '?') + ' · <b>objs</b> ' + esc(m.objectCount ?? '?') + '</div>' +
+      '<div class="links">' + issue + '</div>' +
+      (b.worldState ? '<details><summary>world state</summary><pre>' + esc(JSON.stringify(b.worldState, null, 2)) + '</pre></details>' : '') +
+    '</div></div>';
+}
+
+// boot
+if (KEY) enter();
+$('gateKey') && $('gateKey').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>

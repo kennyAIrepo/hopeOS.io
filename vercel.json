@@ -5,6 +5,7 @@
     { "source": "/worlds", "destination": "/graph.html" },
     { "source": "/you", "destination": "/graph.html" },
     { "source": "/build", "destination": "/world.html" },
+    { "source": "/admin", "destination": "/admin.html" },
     { "source": "/world/:name", "destination": "/world.html" }
   ],
   "headers": [
@@ -21,7 +22,7 @@
       "headers": [{ "key": "cache-control", "value": "public, max-age=0, must-revalidate" }]
     },
     {
-      "source": "/(build|worlds|you|play)",
+      "source": "/(build|worlds|you|play|admin)",
       "headers": [{ "key": "cache-control", "value": "public, max-age=0, must-revalidate" }]
     }
   ]

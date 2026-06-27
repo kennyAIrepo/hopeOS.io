@@ -442,6 +442,82 @@ video.h{display:none}
      message never fades and you can scroll up/down to review the whole exchange. -->
 <div id="aiLog" aria-live="polite"></div>
 
+<!-- ── Experience mode + UI hide/reveal chrome ─────────────────────────────────── -->
+<style>
+  /* Mode chooser — 2/3 panel, neon-green frame/text, the live scene stays visible behind it. */
+  #modeGate{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
+    background:rgba(2,7,5,.30);font-family:'Space Grotesk',system-ui,sans-serif}
+  #modeGate.show{display:flex}
+  .mg-panel{width:66vw;height:66vh;max-width:900px;min-width:320px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:26px;padding:34px;text-align:center;
+    background:rgba(5,14,9,.60);backdrop-filter:blur(7px);border:1.5px solid rgba(73,231,134,.6);
+    border-radius:18px;box-shadow:0 0 44px rgba(93,255,155,.25),inset 0 0 44px rgba(73,231,134,.06)}
+  .mg-title{font-size:13px;letter-spacing:6px;color:#5dff9b;text-shadow:0 0 14px rgba(93,255,155,.5)}
+  .mg-sub{font-size:11px;letter-spacing:1px;color:rgba(93,255,155,.55);margin-top:-16px}
+  .mg-opts{display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
+  .mg-opt{width:236px;max-width:40vw;display:flex;flex-direction:column;gap:9px;align-items:center;
+    padding:26px 20px;cursor:pointer;background:rgba(7,16,12,.5);border:1px solid rgba(73,231,134,.35);
+    border-radius:14px;color:#d7ecdd;font-family:inherit;transition:.15s}
+  .mg-opt:hover{background:rgba(73,231,134,.12);border-color:#5dff9b;transform:translateY(-3px);box-shadow:0 0 24px rgba(93,255,155,.3)}
+  .mg-ico{font-size:38px;filter:drop-shadow(0 0 10px rgba(93,255,155,.4))}
+  .mg-name{font-size:15px;letter-spacing:3px;color:#5dff9b;font-weight:600;text-shadow:0 0 10px rgba(93,255,155,.5)}
+  .mg-desc{font-size:11px;line-height:1.55;color:rgba(215,236,221,.75)}
+  /* Per-bar hide button — floats just outside each bar's top-right corner. */
+  .uiHide{position:absolute;top:-8px;right:-8px;z-index:6;cursor:pointer;font-size:10px;line-height:1;
+    color:rgba(160,220,190,.7);width:18px;height:18px;display:flex;align-items:center;justify-content:center;
+    border-radius:50%;background:rgba(4,10,7,.85);border:1px solid rgba(73,231,134,.35)}
+  .uiHide:hover{color:#02110a;background:#5dff9b}
+  .ui-hidden{display:none !important}
+  /* 👁 UI hub — lists every bar so any can be toggled back on. */
+  #uiHubMenu{display:none;margin-top:6px;background:rgba(5,12,9,.93);border:1px solid rgba(73,231,134,.35);
+    border-radius:10px;padding:6px;min-width:200px;backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  #uiHubMenu.open{display:block}
+  .uiHubRow{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:7px;cursor:pointer;
+    font-size:11px;color:#cfe;letter-spacing:.4px}
+  .uiHubRow:hover{background:rgba(73,231,134,.1)}
+  .uiDot{width:9px;height:9px;border-radius:50%;background:rgba(120,140,130,.5);flex:none;transition:.12s}
+  .uiDot.on{background:#39ff5a;box-shadow:0 0 8px rgba(57,255,90,.8)}
+  /* Gallery mode strips the ask-the-world bar down to a simple chat box. */
+  #ai.gallery-min #modeBtn,#ai.gallery-min #shotBtn,#ai.gallery-min #imgBtn,#ai.gallery-min #deiBtn{display:none}
+</style>
+
+<!-- 👁 UI hub (game mode): toggle any bar on/off; the safety-net to reveal hidden panels -->
+<div id="uiHub" style="position:fixed;top:14px;left:118px;z-index:34;display:none">
+  <button id="uiHubBtn" title="Show / hide UI panels" style="background:rgba(7,16,12,.7);border:1px solid rgba(73,231,134,.4);
+    color:#9fe6bd;border-radius:8px;padding:7px 11px;cursor:pointer;font-family:'Space Grotesk',system-ui,sans-serif;font-size:11px;letter-spacing:1px;backdrop-filter:blur(6px)">👁 UI</button>
+  <div id="uiHubMenu"></div>
+</div>
+
+<!-- Gallery mode: a way back to the engine (sits where Play/Create normally is) -->
+<button id="toGameBtn" title="Switch to the game-engine editor" style="position:fixed;top:14px;left:14px;z-index:34;display:none;
+  padding:7px 14px;background:rgba(60,48,20,.6);border:1px solid rgba(212,168,67,.5);border-radius:8px;color:#f0c25a;
+  font-size:11px;cursor:pointer;font-family:'Space Grotesk',system-ui,sans-serif;backdrop-filter:blur(6px)">🛠 Game mode</button>
+
+<!-- Floating reveal for the ask-the-world bar when it's been toggled off (works in both modes) -->
+<button id="aiReveal" title="Show the ask-the-world bar" style="position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:30;display:none;
+  padding:9px 16px;background:rgba(8,16,12,.8);border:1px solid rgba(73,231,134,.4);border-radius:20px;color:#9fe6bd;
+  font-size:12px;cursor:pointer;font-family:'Space Grotesk',system-ui,sans-serif;backdrop-filter:blur(8px)">💬 ask the world</button>
+
+<!-- Start-of-scene experience chooser -->
+<div id="modeGate">
+  <div class="mg-panel">
+    <div class="mg-title">CHOOSE YOUR EXPERIENCE</div>
+    <div class="mg-sub">you can switch anytime</div>
+    <div class="mg-opts">
+      <div class="mg-opt" data-mode="gallery">
+        <div class="mg-ico">🖼</div>
+        <div class="mg-name">GALLERY</div>
+        <div class="mg-desc">View &amp; wander. A clean, immersive walk-through — just you, the space, and an "ask the world" chat.</div>
+      </div>
+      <div class="mg-opt" data-mode="game">
+        <div class="mg-ico">🛠</div>
+        <div class="mg-name">GAME ENGINE</div>
+        <div class="mg-desc">The full creative suite — build, edit, script, paint &amp; publish. Every panel at your fingertips.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Save / Publish world — rename, choose a cover image, save a private draft or
      publish to the public world graph, with a clear success signal. -->
 <div id="spModal">
@@ -1147,10 +1223,15 @@ function wireEditorTools() {
 
   // Camera / body-gesture tracking toggle (corner button) — privacy + performance.
   const cb2 = document.getElementById('camBtn');
-  if (cb2) cb2.addEventListener('click', () => {
-    camOn = hope.toggleTracking();
+  if (cb2) cb2.addEventListener('click', async () => {
+    if (cb2._busy) return; cb2._busy = true;
+    const turningOn = !(hope.trackingEnabled || hope.tracker || hope._trackingStarting);
+    if (turningOn) { camOn = false; refreshCamBtn(); flash('camera starting…'); }
+    camOn = await hope.toggleTracking();          // authoritative: true only if the camera really opened
+    cb2._busy = false;
     refreshCamBtn();
-    flash(camOn ? 'camera on — body / hand gesture tracking active' : 'camera off — webcam released');
+    flash(camOn ? 'camera on — body / hand gesture tracking active'
+               : (turningOn ? '⚠ camera unavailable — allow access in your browser, then tap again' : 'camera off — webcam released'));
   });
 
   // Undo / redo / delete buttons
@@ -1694,8 +1775,85 @@ function enterWorld() {
 
   running = true;
   hope.start();
+
+  // Experience chooser: every fresh entry asks Gallery vs Game. Entering straight into
+  // build (lobby "Create" / /build) skips the gate and goes full editor.
+  initUIChrome();
+  document.getElementById('uiHub').style.display = 'block';
+  if (BUILD_MODE || ENTRY_MODE === 'create') expMode = 'game';
+  else showModeGate();
 }
 els.play.addEventListener('click', enterWorld);
+
+// ── Experience mode (Gallery vs Game) + universal UI hide/reveal ────────────────
+// Gallery = view & navigate only (just the ask-the-world bar). Game = full editor.
+// Every bar is individually toggleable: a ✕ on roomy bars + the 👁 UI hub lists them
+// all so anything hidden can be brought back.
+let expMode = 'game';
+const UI_PANELS = [
+  { id: 'ai',         label: 'Ask the world' },                         // kept in gallery
+  { id: 'gridBar',    label: 'Tools bar',         auth: true },
+  { id: 'objList',    label: 'Objects menu',      auth: true },
+  { id: 'legend',     label: 'Controls',          auth: true },
+  { id: 'createBar',  label: 'Create panel',      auth: true },
+  { id: 'hud',        label: 'Hint bar',          auth: true },
+  { id: 'modeToggle', label: 'Play / Create',     auth: true },
+  { id: 'deiPanel',   label: 'DEI console',       auth: true },
+  { id: 'bugBtn',     label: 'Report bug',        auth: true },
+  { id: 'topRight',   label: 'Save / Publish / Jump / Cam', auth: true, group: ['saveBtn', 'pubBtn', 'jumpBtn', 'camBtn'] },
+];
+const _panelEls = (p) => (p.group ? p.group : [p.id]).map(id => document.getElementById(id)).filter(Boolean);
+function setPanel(id, show) {
+  const p = UI_PANELS.find(x => x.id === id); if (!p) return;
+  _panelEls(p).forEach(el => el.classList.toggle('ui-hidden', !show));
+  const dot = document.querySelector('#uiHubMenu .uiDot[data-uid="' + id + '"]');
+  if (dot) dot.classList.toggle('on', show);
+  if (id === 'ai') document.getElementById('aiReveal').style.display = show ? 'none' : 'flex';
+}
+function _panelShown(p) { const el = _panelEls(p)[0]; return !!el && !el.classList.contains('ui-hidden') && getComputedStyle(el).display !== 'none'; }
+function buildHub() {
+  const menu = document.getElementById('uiHubMenu'); menu.innerHTML = '';
+  UI_PANELS.forEach(p => {
+    const row = document.createElement('div'); row.className = 'uiHubRow';
+    const dot = document.createElement('span'); dot.className = 'uiDot' + (_panelShown(p) ? ' on' : ''); dot.dataset.uid = p.id;
+    const lab = document.createElement('span'); lab.textContent = p.label;
+    row.append(dot, lab);
+    row.addEventListener('click', () => setPanel(p.id, !_panelShown(p)));
+    menu.appendChild(row);
+  });
+}
+function injectHides() {
+  ['gridBar', 'createBar', 'ai', 'hud'].forEach(id => {           // roomy bars get an inline ✕
+    const el = document.getElementById(id); if (!el || el._uih) return; el._uih = true;
+    const b = document.createElement('span'); b.className = 'uiHide'; b.textContent = '✕';
+    b.title = 'hide — reveal again from the 👁 UI menu';
+    b.addEventListener('click', e => { e.stopPropagation(); setPanel(id, false); });
+    el.appendChild(b);
+  });
+}
+function initUIChrome() { buildHub(); injectHides(); }
+function applyMode(mode) {
+  expMode = mode;
+  const gallery = mode === 'gallery';
+  UI_PANELS.forEach(p => { if (!p.auth) return; if (gallery) setPanel(p.id, false); else if (p.id !== 'createBar') setPanel(p.id, true); });
+  setPanel('ai', true);                                            // ask-the-world stays in both modes
+  document.getElementById('ai').classList.toggle('gallery-min', gallery);
+  document.getElementById('uiHub').style.display = gallery ? 'none' : 'block';   // hub is a game-mode tool
+  document.getElementById('toGameBtn').style.display = gallery ? 'block' : 'none';
+  document.getElementById('exitBtn').classList.remove('ui-hidden');              // EXIT stays in both
+  if (!gallery && buildMode) setPanel('createBar', true);          // restore create panel if mid-build
+  buildHub();
+  flash(gallery ? '🖼 Gallery — view & navigate' : '🛠 Game engine');
+}
+function showModeGate() { document.getElementById('modeGate').classList.add('show'); }
+document.getElementById('modeGate').addEventListener('click', e => {
+  const opt = e.target.closest('.mg-opt'); if (!opt) return;
+  applyMode(opt.dataset.mode);
+  document.getElementById('modeGate').classList.remove('show');
+});
+document.getElementById('toGameBtn').addEventListener('click', () => applyMode('game'));
+document.getElementById('uiHubBtn').addEventListener('click', () => document.getElementById('uiHubMenu').classList.toggle('open'));
+document.getElementById('aiReveal').addEventListener('click', () => setPanel('ai', true));
 
 // Live create⇄play toggle (no reload) + surface marking (menu-driven only)
 document.getElementById('modeToggle').addEventListener('click', () => setBuildMode(!buildMode));

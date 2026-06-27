@@ -209,8 +209,13 @@ export class HopeOS {
     if (this._leftHand) this._leftHand.grp.visible = false;
   }
 
-  /** Toggle tracking on/off. Returns the resulting state (true = on). */
-  toggleTracking() { if (this.tracker || this._trackingStarting) { this.stopTracking(); return false; } this.startTracking(); return true; }
+  /** Toggle tracking on/off. AWAITS the camera so the returned state is the REAL one
+   *  (true = camera actually opened). Off fully releases the device camera. */
+  async toggleTracking() {
+    if (this.trackingEnabled || this.tracker || this._trackingStarting) { this.stopTracking(); return false; }
+    await this.startTracking();
+    return !!this.trackingEnabled;
+  }
 
   // ── Public API: Frame callbacks ──
 

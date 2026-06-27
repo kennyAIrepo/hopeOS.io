@@ -338,6 +338,11 @@ video.h{display:none}
 .orow .k{font-size:9px;color:#5d7468}
 .orow .lk{font-size:11px;cursor:pointer;opacity:.55;transition:.12s;padding:0 1px}
 .orow .lk:hover{opacity:1;transform:scale(1.18)}
+.orow .rn{font-size:11px;cursor:pointer;opacity:0;transition:.12s;padding:0 1px}
+.orow:hover .rn{opacity:.5}
+.orow .rn:hover{opacity:1;transform:scale(1.18)}
+.orename{flex:1;min-width:0;background:rgba(2,7,5,.65);border:1px solid #5dff9b;color:#eafff1;
+  border-radius:5px;padding:2px 6px;font-family:inherit;font-size:12px;outline:none}
 .orow.locked{color:#9fb3a6}
 .orow.locked .ic{color:#7d8c84}
 .orow.locked .lk{opacity:.95}
@@ -519,8 +524,8 @@ world.scaleObject(id, 1.5);            // grow the sky
 </div>
 <style>
 #deiPanel{position:fixed;inset:auto 0 0 0;left:50%;bottom:0;transform:translateX(-50%);z-index:58;display:none;flex-direction:column;
-  width:min(960px,98vw);height:min(62vh,560px);background:rgba(5,11,9,.97);border:1px solid rgba(73,231,134,.4);
-  border-bottom:none;border-radius:14px 14px 0 0;box-shadow:0 -16px 60px rgba(0,0,0,.6);font-family:'Space Grotesk',system-ui,sans-serif;color:#d7ecdd}
+  width:min(960px,98vw);height:min(62vh,560px);background:rgba(5,11,9,.62);backdrop-filter:blur(7px);border:1px solid rgba(73,231,134,.4);
+  border-bottom:none;border-radius:14px 14px 0 0;box-shadow:0 -16px 60px rgba(0,0,0,.5);font-family:'Space Grotesk',system-ui,sans-serif;color:#d7ecdd}
 #deiPanel.show{display:flex}
 .dei-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid rgba(73,231,134,.18)}
 .dei-title{font-size:14px;font-weight:600;color:#7dffb0}
@@ -540,13 +545,13 @@ world.scaleObject(id, 1.5);            // grow the sky
 .dei-mini.ai:hover{background:rgba(80,140,220,.18);color:#bcf}
 .dei-run{background:linear-gradient(135deg,#36d178,#21b85f);border:none;color:#02110a;border-radius:7px;padding:6px 14px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600}
 .dei-run:hover{filter:brightness(1.1)}
-#deiCode{flex:1;min-height:90px;resize:none;background:rgba(2,7,5,.92);border:1px solid rgba(73,231,134,.22);color:#d7f5e2;border-radius:9px;
+#deiCode{flex:1;min-height:90px;resize:none;background:rgba(2,7,5,.34);border:1px solid rgba(73,231,134,.22);color:#d7f5e2;border-radius:9px;
   padding:11px;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;outline:none;tab-size:2}
 #deiCode:focus{border-color:rgba(93,255,155,.5)}
 .dei-aibar{display:flex;gap:7px}
 #deiAsk{flex:1;background:rgba(14,20,30,.85);border:1px solid rgba(80,140,220,.3);color:#cce;border-radius:8px;padding:8px 11px;font-family:inherit;font-size:12px;outline:none}
 #deiAsk:focus{border-color:rgba(120,170,230,.6)}
-.dei-out{margin:0;background:rgba(2,7,5,.9);border:1px solid rgba(73,231,134,.16);border-radius:9px;padding:9px 11px;height:104px;overflow:auto;
+.dei-out{margin:0;background:rgba(2,7,5,.34);border:1px solid rgba(73,231,134,.16);border-radius:9px;padding:9px 11px;height:104px;overflow:auto;
   font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11.5px;line-height:1.5;color:#9fb3a6;white-space:pre-wrap;word-break:break-word}
 .dei-out .ok{color:#7dffb0}.dei-out .err{color:#ff9a9a}.dei-out .ai{color:#9bf}.dei-out .dim{color:#5d7468}
 .dei-refhead{padding:10px 12px 6px;font-size:10px;letter-spacing:1px;color:#43e07a}
@@ -658,8 +663,12 @@ function _objRow(id, ic, label, kind, selIds) {
   const d = document.createElement('div');
   d.className = 'orow' + (selIds.includes(id) ? ' sel' : '') + (locked ? ' locked' : '');
   const i = document.createElement('span'); i.className = 'ic'; i.textContent = ic;
-  const t = document.createElement('span'); t.className = 't'; t.textContent = label; t.title = label;
+  const t = document.createElement('span'); t.className = 't'; t.textContent = label; t.title = label + ' — double-click to rename';
   const k = document.createElement('span'); k.className = 'k'; k.textContent = kind;
+  // Rename — turn the label into an inline editor (pencil, or double-click the name).
+  const rn = document.createElement('span'); rn.className = 'rn'; rn.textContent = '✎'; rn.title = 'rename';
+  rn.addEventListener('click', (e) => { e.stopPropagation(); _beginRename(id, t, label); });
+  t.addEventListener('dblclick', (e) => { e.stopPropagation(); _beginRename(id, t, label); });
   // Lock toggle — locks this game object (incl. the GLB base + skybox) so it can't
   // be moved/scaled/edited until toggled off again.
   const lk = document.createElement('span'); lk.className = 'lk'; lk.textContent = locked ? '🔒' : '🔓';
@@ -671,9 +680,39 @@ function _objRow(id, ic, label, kind, selIds) {
     sayAI((now ? '🔒 locked ' : '🔓 unlocked ') + label, 'sys');
     refreshObjList();
   });
-  d.append(i, t, k, lk);
+  d.append(i, t, k, rn, lk);
   d.addEventListener('click', () => { if (editor.selectById(id)) flash('selected ' + label); });
   return d;
+}
+
+// Inline-rename a row: swap the label span for a text field; Enter/blur commits,
+// Esc cancels. Works for props/imports (world.nameObject), the base environment
+// and the sky shell. Keystrokes are kept out of the avatar's WASD handler.
+function _beginRename(id, t, currentLabel) {
+  const inp = document.createElement('input');
+  inp.className = 'orename'; inp.value = currentLabel; inp.spellcheck = false;
+  t.replaceWith(inp); inp.focus(); inp.select();
+  let done = false;
+  const finish = (save) => {
+    if (done) return; done = true;
+    const v = inp.value.trim();
+    if (save && v && v !== currentLabel) {
+      let label = v;
+      if (id === '__sky__') world._skyLabel = v;
+      else if (id === '__scene__') { world.modelLabel = v; if (world.model) world.model.userData.label = v; }
+      else label = world.nameObject(id, v) || v;
+      flash('renamed → ' + label);
+    }
+    refreshObjList();
+    if (editor) onSelectionChanged(editor.selectedIds.length);   // keep the selection toolbar label fresh
+  };
+  inp.addEventListener('keydown', (e) => {
+    e.stopPropagation();   // don't let letters drive WASD / shortcuts while typing
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  inp.addEventListener('click', (e) => e.stopPropagation());   // editing, not selecting the row
+  inp.addEventListener('blur', () => finish(true));
 }
 // Rebuild the OBJECTS list from the live set (sky + world + every prop).
 function refreshObjList() {
@@ -681,7 +720,7 @@ function refreshObjList() {
   const assets = world.assets || [];
   const selIds = editor ? editor.selectedIds : [];
   rows.innerHTML = '';
-  if (world._skyboxUrl) rows.appendChild(_objRow('__sky__', '🌌', 'sky', 'shell', selIds));
+  if (world._skyboxUrl) rows.appendChild(_objRow('__sky__', '🌌', world._skyLabel || 'sky', 'shell', selIds));
   // Base environment shown under its ORIGINAL uploaded/downloaded name.
   if (world.model) rows.appendChild(_objRow('__scene__', '🏛', world.modelLabel || 'world', 'environment', selIds));
   assets.forEach(a => rows.appendChild(_objRow(a.id, _objIcon(a), a.label, a.source === 'import' ? 'model' : (a.ptype || 'object'), selIds)));
@@ -788,8 +827,28 @@ async function boot() {
 let voiceOn = false;
 // Persistent chat log (CONVERSATION only). who: 'agent' (default) | 'you'.
 // The newest line stays pinned at the bottom and never fades; scroll up to review.
+// ── Live activity log ──────────────────────────────────────────────────────────
+// Record every "ask the world" turn to the server so the world owner can watch real
+// visitor conversations live (GET /api/world/<slug>/activity). Fires ONLY for a
+// PUBLISHED world — there's a shared slug to attach to; local drafts stay private.
+// Fire-and-forget: logging must never block or break the chat.
+const _sessionId = (() => { try { return crypto.randomUUID().slice(0, 8); } catch { return 'sess' + Math.floor(performance.now()).toString(36); } })();
+function logActivity(role, text) {
+  try {
+    const slug = currentWorld && currentWorld.publishedAs;
+    if (!slug || !text) return;
+    fetch('/api/world/' + encodeURIComponent(slug) + '/activity', {
+      method: 'POST', keepalive: true,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId: _sessionId, role, text: String(text).slice(0, 4000) }),
+    }).catch(() => {});
+  } catch { /* never let logging break the UI */ }
+}
+
 function sayAI(msg, who) {
   if (msg == null || msg === '') return;
+  if (who === 'you') logActivity('user', msg);                                // the visitor's prompt
+  else if (who !== 'sys') logActivity('agent', msg);                          // the agent's reply
   if (who === 'sys') { flash(msg); return; }                                  // system notices → transient toast, not the log
   const log = document.getElementById('aiLog'); if (!log) return;
   log.classList.add('show');
@@ -1043,7 +1102,7 @@ function wireEditorTools() {
 const History = { undo: [], redo: [], last: null, cap: 5 };
 let _histStable = 0, _pendingSig = null, _restoring = false;
 
-function histSig(state) { return state.map(o => `${o.id}|${o.kind}|${o.color}|${o.position}|${o.rotationDeg}|${o.scale}`).join('~'); }
+function histSig(state) { return state.map(o => `${o.id}|${o.kind}|${o.ptype}|${o.label}|${o.color}|${o.position}|${o.rotationDeg}|${o.scale}`).join('~'); }
 function histCapture() { return world ? world.snapshot() : []; }
 function histInit() { History.last = histCapture(); History.undo = []; History.redo = []; _pendingSig = null; _histStable = 0; updateHistoryButtons(); }
 

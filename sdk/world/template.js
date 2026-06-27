@@ -1404,6 +1404,13 @@ export class WorldTemplate {
       .filter(a => !(a.source === 'ai' && !cleanUrl(a.url) && !(a.blob instanceof Blob)))
       .map((a) => {
       const m = a.mesh, isImport = a.ptype === 'import';
+      // Derive the shape from the LIVE geometry, not the stale a.ptype — a primitive
+      // reshaped after creation (box → column, etc.) updates its geometry but not the
+      // ptype field, so persisting a.ptype silently reverted the shape on reload/publish.
+      // (listObjects() already reads geometry.type; snapshot now matches it.)
+      const livePtype = isImport ? null
+        : ({ BoxGeometry: 'box', SphereGeometry: 'sphere', CylinderGeometry: 'cylinder', ConeGeometry: 'cone' }[m.geometry && m.geometry.type] || a.ptype);
+      if (livePtype && livePtype !== a.ptype) a.ptype = livePtype;   // self-heal so the collider/list agree too
       const mat = !isImport && m.material && m.material.color ? '#' + m.material.color.getHexString() : null;
       return {
         id: a.id,
@@ -1411,7 +1418,7 @@ export class WorldTemplate {
         kind: isImport ? 'import' : 'primitive',
         url: isImport ? cleanUrl(a.url) : null,
         blob: isImport ? (a.blob || null) : null,   // uploaded local GLB bytes → persist so it reloads
-        ptype: isImport ? null : a.ptype,
+        ptype: livePtype,
         color: mat,
         position: m.position.toArray().map(r3),
         rotationDeg: [THREE.MathUtils.radToDeg(m.rotation.x), THREE.MathUtils.radToDeg(m.rotation.y), THREE.MathUtils.radToDeg(m.rotation.z)].map(r1),

@@ -9,7 +9,7 @@
  * Blob, connect it to this project). Vercel auto-injects BLOB_READ_WRITE_TOKEN.
  */
 import { put, list } from '@vercel/blob';
-import { blobToken } from '../_blob.js';
+import { blobToken } from '../../_blob.js';
 
 function slugify(name) {
   return String(name || '').trim().replace(/[^\w-]+/g, '_').slice(0, 80);

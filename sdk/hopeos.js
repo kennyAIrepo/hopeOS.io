@@ -121,7 +121,9 @@ export class HopeOS {
     // Remember the video targets so tracking can be toggled on/off any time.
     hope._videoEls = { bg: opts.bgVideo || null, detection: opts.detectionVideo || null };
     hope._numHands = opts.numHands || 2;
-    if (opts.bgVideo && opts.detectionVideo) hope.startTracking();   // fire-and-forget (never blocks boot)
+    // World mode starts with the device camera OFF (privacy) — the user opens it with the
+    // CAM toggle. Other modes (e.g. the DEI camera page) auto-start as before.
+    if (opts.bgVideo && opts.detectionVideo && !hope.worldMode) hope.startTracking();   // fire-and-forget (never blocks boot)
 
     // Body tracker
     hope.body = new BodyTracker(scene);
@@ -181,12 +183,20 @@ export class HopeOS {
     if (!els || !els.detection || this._trackingStarting || this.tracker) return;
     this._trackingStarting = true;
     try {
+      // Open the DEVICE CAMERA first. This is what the toggle really controls — it must
+      // succeed/release independently of MediaPipe so a model failure never leaves the
+      // camera dangling or the toggle stuck.
       this._camStreams = await initCamera(els.bg, els.detection);
-      this.tracker = await initTracking(els.detection, { numHands: this._numHands });
-      this.trackingEnabled = true;
-      console.log('[hopeOS] hand/body tracking online');
+      this.trackingEnabled = true;                                   // camera is ON regardless of the gesture model
+      try {
+        this.tracker = await initTracking(els.detection, { numHands: this._numHands });
+        console.log('[hopeOS] hand/body tracking online');
+      } catch (te) {
+        console.warn('[hopeOS] gesture model unavailable (camera still on):', te.message || te);
+      }
     } catch (e) {
-      console.warn('[hopeOS] camera/tracking unavailable:', e.message || e);
+      console.warn('[hopeOS] camera unavailable:', e.message || e);
+      this.stopTracking();                                           // release any partial stream — never dangle the device camera
     } finally {
       this._trackingStarting = false;
     }

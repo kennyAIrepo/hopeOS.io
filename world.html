@@ -727,7 +727,7 @@ document.getElementById('modeOpts').addEventListener('click', e => {
 
 let hope, world, nav, embody, agent, voice, manip, editor, grid, tracer, running = false;
 let traceOn = false, paintOn = false, eraseOn = false, sketchOn = false, _drawMode = 'paint', spawnPickOn = false;
-let gridShown = false, jumpMode = false, gridMode = 'off', camOn = true;   // grid hidden by default on spawn
+let gridShown = false, jumpMode = false, gridMode = 'off', camOn = false;   // grid hidden + camera OFF by default (privacy); user opens camera via CAM
 
 // Reflect the camera/gesture-tracking toggle state on the corner button.
 function refreshCamBtn() {

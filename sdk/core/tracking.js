@@ -27,22 +27,27 @@ export async function initTracking(videoEl, opts = {}) {
     'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm'
   );
 
-  const handLandmarker = await V.HandLandmarker.createFromOptions(fs, {
-    baseOptions: {
-      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-      delegate: 'GPU'
-    },
+  // Create a landmarker, falling back to the CPU delegate if the GPU one fails. Some
+  // browsers/drivers throw a cryptic error from the WASM/GPU path ("dbg is not a
+  // function" etc.); CPU is slower but works, so tracking still comes online.
+  const makeLM = async (Cls, options) => {
+    try { return await Cls.createFromOptions(fs, { ...options, baseOptions: { ...options.baseOptions, delegate: 'GPU' } }); }
+    catch (e) {
+      console.warn('[tracking] GPU delegate failed (' + (e.message || e) + ') — retrying on CPU');
+      return await Cls.createFromOptions(fs, { ...options, baseOptions: { ...options.baseOptions, delegate: 'CPU' } });
+    }
+  };
+
+  const handLandmarker = await makeLM(V.HandLandmarker, {
+    baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task' },
     runningMode: 'VIDEO',
     numHands: opts.numHands || 2,
     minHandDetectionConfidence: opts.handConfidence || 0.5,
     minTrackingConfidence: opts.trackingConfidence || 0.5
   });
 
-  const poseLandmarker = await V.PoseLandmarker.createFromOptions(fs, {
-    baseOptions: {
-      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
-      delegate: 'GPU'
-    },
+  const poseLandmarker = await makeLM(V.PoseLandmarker, {
+    baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task' },
     runningMode: 'VIDEO',
     numPoses: 1,
     minPoseDetectionConfidence: 0.5,
@@ -53,11 +58,8 @@ export async function initTracking(videoEl, opts = {}) {
   let faceLandmarker = null;
   if (opts.enableFace !== false) {
     try {
-      faceLandmarker = await V.FaceLandmarker.createFromOptions(fs, {
-        baseOptions: {
-          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-          delegate: 'GPU'
-        },
+      faceLandmarker = await makeLM(V.FaceLandmarker, {
+        baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task' },
         runningMode: 'VIDEO',
         numFaces: 1,
         minFaceDetectionConfidence: 0.5,

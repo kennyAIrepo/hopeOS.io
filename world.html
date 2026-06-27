@@ -482,14 +482,15 @@ video.h{display:none}
 </style>
 
 <!-- 👁 UI hub (game mode): toggle any bar on/off; the safety-net to reveal hidden panels -->
-<div id="uiHub" style="position:fixed;top:14px;left:118px;z-index:34;display:none">
+<div id="uiHub" style="position:fixed;top:14px;left:272px;z-index:34;display:none">
   <button id="uiHubBtn" title="Show / hide UI panels" style="background:rgba(7,16,12,.7);border:1px solid rgba(73,231,134,.4);
     color:#9fe6bd;border-radius:8px;padding:7px 11px;cursor:pointer;font-family:'Space Grotesk',system-ui,sans-serif;font-size:11px;letter-spacing:1px;backdrop-filter:blur(6px)">👁 UI</button>
   <div id="uiHubMenu"></div>
 </div>
 
-<!-- Gallery mode: a way back to the engine (sits where Play/Create normally is) -->
-<button id="toGameBtn" title="Switch to the game-engine editor" style="position:fixed;top:14px;left:14px;z-index:34;display:none;
+<!-- Experience-mode switch. Gallery → "🛠 Game mode" (top-left corner). Game → "↩ return
+     to GALLERY" beside the Play/Create controls. Position + label set by applyMode(). -->
+<button id="modeSwitch" title="Switch experience mode" style="position:fixed;top:14px;left:14px;z-index:34;display:none;
   padding:7px 14px;background:rgba(60,48,20,.6);border:1px solid rgba(212,168,67,.5);border-radius:8px;color:#f0c25a;
   font-size:11px;cursor:pointer;font-family:'Space Grotesk',system-ui,sans-serif;backdrop-filter:blur(6px)">🛠 Game mode</button>
 
@@ -738,6 +739,7 @@ function refreshCamBtn() {
 // ── Selection: works in BOTH play (click-select only) and create (full editor) ──
 function refreshEditor() {
   if (!editor) return;
+  if (expMode === 'gallery') { editor.setEnabled(false); return; }              // gallery = view only, no selecting
   if (paintOn || sketchOn || eraseOn || spawnPickOn || jumpMode || gridMode !== 'off') { editor.setEnabled(false); return; }   // paint/sketch/erase/spawn/jump/grid own the click
   if (buildMode) editor.setEnabled(true);                                       // full create editor (gizmo, box-select)
   else editor.setEnabled(true, { selectOnly: true });                           // play: click any object to select it
@@ -1777,10 +1779,9 @@ function enterWorld() {
   hope.start();
 
   // Experience chooser: every fresh entry asks Gallery vs Game. Entering straight into
-  // build (lobby "Create" / /build) skips the gate and goes full editor.
+  // build (lobby "Create" / /build) skips the gate and goes full editor (mode switch still shown).
   initUIChrome();
-  document.getElementById('uiHub').style.display = 'block';
-  if (BUILD_MODE || ENTRY_MODE === 'create') expMode = 'game';
+  if (BUILD_MODE || ENTRY_MODE === 'create') applyMode('game');
   else showModeGate();
 }
 els.play.addEventListener('click', enterWorld);
@@ -1839,19 +1840,38 @@ function applyMode(mode) {
   setPanel('ai', true);                                            // ask-the-world stays in both modes
   document.getElementById('ai').classList.toggle('gallery-min', gallery);
   document.getElementById('uiHub').style.display = gallery ? 'none' : 'block';   // hub is a game-mode tool
-  document.getElementById('toGameBtn').style.display = gallery ? 'block' : 'none';
+  // Experience-mode switch: corner "Game mode" in gallery; "return to GALLERY" beside Play/Create in game.
+  const ms = document.getElementById('modeSwitch'); ms.style.display = 'block';
+  if (gallery) { ms.style.left = '14px'; ms.textContent = '🛠 Game mode';
+    ms.style.color = '#f0c25a'; ms.style.borderColor = 'rgba(212,168,67,.5)'; ms.style.background = 'rgba(60,48,20,.6)'; }
+  else { ms.style.left = '118px'; ms.textContent = '↩ return to GALLERY';
+    ms.style.color = '#9fe6bd'; ms.style.borderColor = 'rgba(73,231,134,.4)'; ms.style.background = 'rgba(12,30,22,.65)'; }
   document.getElementById('exitBtn').classList.remove('ui-hidden');              // EXIT stays in both
+  if (gallery) { document.getElementById('selBar').classList.remove('show');     // no selection toolbar in gallery
+    if (editor && editor.clearSelection) editor.clearSelection(); }
   if (!gallery && buildMode) setPanel('createBar', true);          // restore create panel if mid-build
+  if (typeof refreshEditor === 'function') refreshEditor();        // gallery disables click-select; game restores it
   buildHub();
   flash(gallery ? '🖼 Gallery — view & navigate' : '🛠 Game engine');
 }
-function showModeGate() { document.getElementById('modeGate').classList.add('show'); }
+function showModeGate() {
+  // Clean, gallery-like backdrop while the chooser is up — hide ALL chrome so the
+  // live scene shows behind the panel, not the engine UI.
+  UI_PANELS.forEach(p => setPanel(p.id, false));
+  document.getElementById('selBar').classList.remove('show');
+  document.getElementById('modeSwitch').style.display = 'none';
+  document.getElementById('uiHub').style.display = 'none';
+  document.getElementById('aiReveal').style.display = 'none';
+  document.getElementById('exitBtn').classList.add('ui-hidden');
+  if (editor && editor.clearSelection) editor.clearSelection();
+  document.getElementById('modeGate').classList.add('show');
+}
 document.getElementById('modeGate').addEventListener('click', e => {
   const opt = e.target.closest('.mg-opt'); if (!opt) return;
   applyMode(opt.dataset.mode);
   document.getElementById('modeGate').classList.remove('show');
 });
-document.getElementById('toGameBtn').addEventListener('click', () => applyMode('game'));
+document.getElementById('modeSwitch').addEventListener('click', () => applyMode(expMode === 'gallery' ? 'game' : 'gallery'));
 document.getElementById('uiHubBtn').addEventListener('click', () => document.getElementById('uiHubMenu').classList.toggle('open'));
 document.getElementById('aiReveal').addEventListener('click', () => setPanel('ai', true));
 

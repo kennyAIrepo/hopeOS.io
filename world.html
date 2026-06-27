@@ -276,6 +276,12 @@ video.h{display:none}
 <!-- Object list — every game object in the set; click to select & manipulate -->
 <div id="objList">
   <div id="objHead">▦ OBJECTS <span class="c">▾</span></div>
+  <div id="objTools">
+    <span class="ohint">⌘/⇧-click = group-select</span>
+    <span class="ogrow"></span>
+    <span class="oact" id="objSelAll" title="select every object">all</span>
+    <span class="oact" id="objSelClear" title="clear selection">clear</span>
+  </div>
   <div id="objRows"><div id="objEmpty">no objects yet</div></div>
 </div>
 
@@ -354,6 +360,12 @@ video.h{display:none}
 #objHead .c{color:#5d7468;transition:transform .2s}
 #objList.collapsed #objHead .c{transform:rotate(-90deg)}
 #objList.collapsed #objRows{display:none}
+#objList.collapsed #objTools{display:none}
+#objTools{display:flex;align-items:center;gap:6px;padding:4px 9px 3px;font-size:9px;color:#5d7468;border-bottom:1px solid rgba(73,231,134,.08)}
+#objTools .ohint{letter-spacing:.3px}
+#objTools .ogrow{flex:1}
+#objTools .oact{cursor:pointer;color:#9fe6bd;border:1px solid rgba(73,231,134,.25);border-radius:5px;padding:2px 7px}
+#objTools .oact:hover{background:rgba(73,231,134,.14);color:#5dff9b}
 #objRows{overflow:auto;padding:5px}
 .orow{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:7px;cursor:pointer;color:#d7ecdd;font-size:12px;transition:.12s}
 .orow:hover{background:rgba(73,231,134,.1)}
@@ -784,7 +796,15 @@ function _objRow(id, ic, label, kind, selIds) {
     refreshObjList();
   });
   d.append(i, t, k, rn, lk);
-  d.addEventListener('click', () => { if (editor.selectById(id)) flash('selected ' + label); });
+  // Plain click = select just this one. Ctrl/⌘/Shift-click = add/remove from a
+  // multi-selection GROUP, so a gizmo move / delete / duplicate hits all of them.
+  d.addEventListener('click', (e) => {
+    if (e.ctrlKey || e.metaKey || e.shiftKey) {
+      if (editor.toggleById(id)) flash(editor.selectionCount + ' selected');
+    } else {
+      if (editor.selectById(id)) flash('selected ' + label);
+    }
+  });
   return d;
 }
 
@@ -1213,6 +1233,9 @@ function wireEditorTools() {
   });
   // Object list collapse toggle
   document.getElementById('objHead').addEventListener('click', () => document.getElementById('objList').classList.toggle('collapsed'));
+  // Group-select actions: select every object / clear the whole group.
+  document.getElementById('objSelAll').addEventListener('click', (e) => { e.stopPropagation(); const n = editor.selectAll(); flash(n + ' selected — edits apply to all'); });
+  document.getElementById('objSelClear').addEventListener('click', (e) => { e.stopPropagation(); editor.clearSelection(); flash('selection cleared'); });
 
   const jb = document.getElementById('jumpBtn');
   if (jb) jb.addEventListener('click', () => {

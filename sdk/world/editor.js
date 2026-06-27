@@ -143,7 +143,26 @@ export class ObjectEditor {
     this._setSelection([asset]);
     return true;
   }
+
+  /** Toggle an object in/out of the current selection (multi-select from the list —
+   *  ctrl/⌘/shift-click). Lets the user GROUP objects so a gizmo move / delete /
+   *  duplicate applies to all of them at once. */
+  toggleById(id) {
+    let asset = this.world.assets.find(a => a.id === id);
+    if (!asset && id === '__scene__' && this.world.model) { this.world.sceneIsObject = true; asset = this._sceneAsset(); }
+    if (!asset && id === '__sky__' && this.world._skybox) asset = this._skyAsset();
+    if (!asset) return false;
+    this._toggle(asset);
+    return true;
+  }
   clearSelection() { this._clear(); }
+
+  /** Select every placed object at once (group edit). */
+  selectAll() {
+    const assets = this.world.assets.slice();
+    if (assets.length) this._setSelection(assets);
+    return assets.length;
+  }
 
   /** Duplicate the current selection and select the copies. */
   duplicateSelection() {

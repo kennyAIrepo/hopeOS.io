@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bura Ceramics — Panel Preview</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Helvetica Neue',Arial,sans-serif;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #2a2622 0%, #17140f 60%, #0d0b08 100%);
+    color:#e8e0d2;min-height:100vh;padding:0 0 80px;
+  }
+  header{
+    position:sticky;top:0;z-index:10;
+    background:rgba(13,11,8,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    border-bottom:1px solid rgba(180,150,100,.18);
+    padding:16px 28px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  }
+  header h1{font-size:18px;font-weight:600;letter-spacing:.3px}
+  header .sub{font-size:12px;color:#a99c84;max-width:560px;line-height:1.5}
+  header a.home{
+    margin-left:auto;font-size:12px;letter-spacing:1px;color:#cdbf9a;text-decoration:none;
+    border:1px solid rgba(180,150,100,.3);border-radius:6px;padding:6px 12px;
+  }
+  header a.home:hover{background:rgba(180,150,100,.12)}
+  .toolbar{display:flex;gap:10px;align-items:center;font-size:12px;color:#bdb094}
+  .toolbar button{
+    font:inherit;font-size:12px;color:#e8e0d2;background:rgba(180,150,100,.14);
+    border:1px solid rgba(180,150,100,.3);border-radius:6px;padding:6px 12px;cursor:pointer;
+  }
+  .toolbar button:hover{background:rgba(180,150,100,.26)}
+  #status{font-size:12px;color:#a99c84;padding:14px 28px}
+  /* Gallery wall */
+  .wall{
+    max-width:1480px;margin:0 auto;padding:28px;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+    gap:46px 40px;align-items:start;
+  }
+  .mount{display:flex;flex-direction:column;align-items:center;gap:12px}
+  .frame{
+    position:relative;background:#0a0908;
+    padding:14px;border-radius:4px;
+    box-shadow:
+      0 2px 0 rgba(255,255,255,.05) inset,
+      0 26px 50px -18px rgba(0,0,0,.85),
+      0 0 0 2px rgba(120,95,55,.35);
+    border:6px solid #1c160e;
+    transition:transform .25s ease, box-shadow .25s ease;
+  }
+  .frame::before{ /* picture light */
+    content:'';position:absolute;left:50%;top:-26px;width:62%;height:26px;
+    transform:translateX(-50%);
+    background:radial-gradient(ellipse at 50% 100%, rgba(255,224,170,.32), rgba(255,224,170,0) 70%);
+    pointer-events:none;
+  }
+  .frame:hover{transform:translateY(-4px);box-shadow:
+      0 2px 0 rgba(255,255,255,.06) inset,
+      0 34px 60px -16px rgba(0,0,0,.9),
+      0 0 0 2px rgba(170,135,80,.55);}
+  .frame canvas{display:block;width:320px;height:auto;border-radius:2px;background:#efe4cf}
+  .srcbar{
+    position:absolute;left:14px;right:14px;bottom:14px;
+    display:flex;flex-wrap:wrap;gap:4px 6px;justify-content:center;align-items:center;
+    padding:7px 8px;border-radius:2px;
+    background:transparent;
+  }
+  .srcbar .lbl{font-size:9px;letter-spacing:.6px;color:#6f5d33;align-self:center;text-transform:uppercase}
+  .srcbar .lbl.sm{font-size:5px;letter-spacing:.2px;text-transform:none}
+  .srcbar a{
+    font-size:7.5px;line-height:1.2;color:#3f3318;text-decoration:none;
+    border:1px solid rgba(63,51,24,.32);border-radius:3px;padding:2px 5px;
+    white-space:nowrap;transition:background .15s ease,color .15s ease;
+  }
+  .srcbar a:hover{background:rgba(154,107,31,.2);color:#241c0c}
+  .plate{
+    font-size:11px;letter-spacing:.4px;color:#c9b98f;text-align:center;
+    background:rgba(0,0,0,.35);border:1px solid rgba(180,150,100,.22);
+    border-radius:4px;padding:5px 10px;max-width:320px;
+  }
+  .plate b{color:#efe4cf;font-weight:600}
+  .plate .st{display:inline-block;margin-top:3px;font-size:10px;color:#b6a37a}
+  .skeleton{width:320px;height:480px;border-radius:2px;
+    background:linear-gradient(110deg,#211c15 30%,#2c251a 50%,#211c15 70%);
+    background-size:200% 100%;animation:sh 1.4s linear infinite}
+  @keyframes sh{to{background-position:-200% 0}}
+  footer{max-width:1480px;margin:20px auto 0;padding:0 28px;font-size:12px;color:#8c8068;line-height:1.6}
+  footer code{background:rgba(180,150,100,.12);padding:1px 6px;border-radius:4px;color:#cdbf9a}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Bura Ceramics — Gallery Panel Preview</h1>
+    <div class="sub">Each poster is rendered to a <code>&lt;canvas&gt;</code> by <code>loader.js</code> — the same canvas becomes a <code>THREE.CanvasTexture</code> when we mount it in the scene. Review here before we prepare materials.</div>
+  </div>
+  <div class="toolbar">
+    <button id="dl">⬇ Download PNGs</button>
+  </div>
+  <a class="home" href="/">⌂ home</a>
+</header>
+<div id="status">Loading panels…</div>
+<div class="wall" id="wall"></div>
+<footer id="foot"></footer>
+
+<script type="module">
+import { loadPanels, renderPanelToCanvas } from './loader.js';
+
+const wall = document.getElementById('wall');
+const statusEl = document.getElementById('status');
+const foot = document.getElementById('foot');
+const rendered = []; // { panel, canvas }
+
+function skeleton(panel) {
+  const mount = document.createElement('div');
+  mount.className = 'mount';
+  mount.dataset.id = panel.id;
+  mount.innerHTML = `
+    <div class="frame"><div class="skeleton"></div></div>
+    <div class="plate"><b>Panel ${panel.id}</b> · ${panel.title}</div>`;
+  return mount;
+}
+
+// Clickable source links pinned to the bottom of each poster.
+// labelMode: 'none' (no label, max room for links) | 'small' (tiny lowercase 'sources') | 'full'.
+function sourceBar(panel, labelMode = 'full') {
+  const bar = document.createElement('div');
+  bar.className = 'srcbar';
+  const srcs = (panel.sources || []).filter((s) => s && s.url);
+  if (!srcs.length) { bar.style.display = 'none'; return bar; }
+  if (labelMode !== 'none') {
+    const lbl = document.createElement('span');
+    lbl.className = labelMode === 'small' ? 'lbl sm' : 'lbl';
+    lbl.textContent = labelMode === 'small' ? 'sources' : 'Sources';
+    bar.appendChild(lbl);
+  }
+  for (const s of srcs) {
+    const a = document.createElement('a');
+    a.href = s.url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = s.name || s.publisher || s.title;
+    a.title = s.title || s.url;
+    bar.appendChild(a);
+  }
+  return bar;
+}
+
+(async () => {
+  let data;
+  try {
+    data = await loadPanels();
+  } catch (e) {
+    statusEl.textContent = '⚠ ' + e.message + '  (serve this folder over http — file:// blocks fetch)';
+    return;
+  }
+
+  document.title = data.collection.title + ' — Preview';
+  statusEl.innerHTML = `<b>${data.collection.title}</b> — ${data.panels.length} panels. `
+    + `Status badges: <i>draft / needs-image-clearance / needs-illustration / ready</i>. `
+    + `Cross-origin reference images may not load (expected) — placeholders show the intended artwork.`;
+
+  // place skeletons first so layout is stable
+  const mounts = {};
+  for (const p of data.panels) {
+    const m = skeleton(p);
+    mounts[p.id] = m;
+    wall.appendChild(m);
+  }
+
+  // render sequentially (keeps image loads gentle)
+  for (const panel of data.panels) {
+    const canvas = await renderPanelToCanvas(panel, { width: 1024, height: 1536, drawSources: false });
+    rendered.push({ panel, canvas });
+    const m = mounts[panel.id];
+    m.innerHTML = '';
+    const frame = document.createElement('div');
+    frame.className = 'frame';
+    frame.appendChild(canvas);
+    frame.appendChild(sourceBar(panel, 'none'));
+    const plate = document.createElement('div');
+    plate.className = 'plate';
+    plate.innerHTML = `<b>Panel ${panel.id}</b> · ${panel.title}`
+      + `<br><span class="st">${panel.format} — ${panel.status}</span>`;
+    m.appendChild(frame);
+    m.appendChild(plate);
+  }
+
+  foot.innerHTML = `Rendered ${rendered.length} posters from <code>panels.json</code> via <code>loader.js</code>. `
+    + `Next: wrap each canvas as <code>new THREE.CanvasTexture(canvas)</code> on a plane in the world scene.`;
+})();
+
+document.getElementById('dl').addEventListener('click', async () => {
+  for (const { panel } of rendered) {
+    try {
+      // re-render WITH the baked sources line so the exported PNG keeps attribution
+      const canvas = await renderPanelToCanvas(panel, { width: 1024, height: 1536, drawSources: true });
+      const a = document.createElement('a');
+      a.download = `bura-panel-${panel.id}-${panel.name}.png`;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    } catch (e) {
+      // canvas tainted by a cross-origin image — expected for un-cleared refs
+      console.warn(`Panel ${panel.id}: cannot export (tainted by cross-origin image).`, e);
+    }
+  }
+});
+</script>
+</body>
+</html>

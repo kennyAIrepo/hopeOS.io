@@ -1,0 +1,312 @@
+{
+  "$schema": "./panel.schema.json",
+  "collection": {
+    "id": "aabc-bura-ceramics",
+    "title": "AABC Bura Ceramics — Research Panels",
+    "subtitle": "Funerary terracotta of the Bura-Asinda-Sikka culture, Niger River valley (c. 3rd–13th century CE)",
+    "anchorArtifact": "AABC Bura clay jar-top face (anthropomorphic vessel cap / grave marker)",
+    "anchorArtifactSource": {
+      "institution": "The Metropolitan Museum of Art, New York",
+      "object": "Grave Marker, Bura peoples, Niger",
+      "date": "3rd–11th century",
+      "medium": "Terracotta, H. 31.5 in (80 cm)",
+      "accession": "1998.478.1",
+      "creditLine": "Gift of Jerome Vogel, 1998",
+      "license": "Public Domain (CC0 — The Met Open Access)",
+      "url": "https://www.metmuseum.org/art/collection/search/317898",
+      "note": "The Bura ceramic face used in the existing 3D scene corresponds to this Met grave marker. Met Open Access images are CC0 and may be displayed/reused."
+    },
+    "purpose": "Source content for a set of gallery wall panels/posters. Each panel object below maps to one physical poster; the display pulls title, description, body, images and sources from its record.",
+    "version": "1.1.0",
+    "generated": "2026-06-28",
+    "researchMethod": "Web research via Tavily (search + image retrieval), June 2026.",
+    "curatorialNotes": [
+      "Dating is reported inconsistently across sources: Wikipedia/UNESCO frame the Bura culture as 'first-millennium'; Grokipedia and several galleries give 3rd–13th c. CE; the Mulvane Art Museum cites 2nd–11th c. CE from stratigraphy. Panels use 'c. 3rd–13th century CE' with a note, and should be finalised against a primary source (Gado 1993).",
+      "Discovery: accidentally found 1975 (terracotta head[s]) near Bura-Asinda-Sikka; reported to IRSH, University of Niamey; first small dig 1978; first systematic excavation 1983 led by Boubé Gado. Some sources name the finder as villager Abdurahman Sindy.",
+      "Coordinates differ by source. Wikipedia gives 13°53′53″N 1°02′20″E (13.898, 1.039); Grokipedia gives ~13°50′N 0°30′E. Use the Wikipedia value as primary and verify against Niger heritage records before printing a precise pin."
+    ],
+    "imageLicensingPolicy": "Image URLs are research references only. Museum/Wikimedia images may be reusable under CC/open-access terms (verify per item); auction-house and commercial-gallery images are NOT cleared for reproduction. Confirm rights/credit for every image before it is printed on a panel. Prefer open-access (Wikimedia Commons, museum open-access) or commission original illustrations for A/C/D.",
+    "demoUsagePolicy": "This panel set is assembled for an in-engine DEMONSTRATION, not for publication or printed distribution. Cleared visuals: the four Met 'Bura peoples' objects are Public Domain (CC0, Met Open Access) and are downloaded into ./assets for same-origin display — these are safe to show and reuse. Un-cleared visuals (auction/commercial/editorial photos, and the site map) are shown only as low-resolution references for the demo and carry a 'usageNote'; the renderer stamps those panels 'For demo purposes only — not for distribution'. Replace or clear every flagged image before any public, printed, or distributed use."
+  },
+  "schema": {
+    "description": "Field definitions for each panel record.",
+    "fields": {
+      "id": "Short panel code (A–F) used to order/lay out the wall.",
+      "name": "Machine slug for the panel (kebab-case); stable key the display binds to.",
+      "title": "Headline shown on the poster.",
+      "subtitle": "Optional secondary line under the title.",
+      "format": "Intended visual treatment (e.g. 'Sepia topographic illustration').",
+      "panelCaption": "One-line caption/standfirst for the poster.",
+      "description": "Short summary (≈40–80 words) — the primary readable block on the panel.",
+      "body": "Longer narrative (optional) for posters that carry more text or a back-of-card.",
+      "keyFacts": "Bulleted facts suitable for a sidebar or fact strip.",
+      "images": "Array of image references: { url, caption, credit, license, role }. role ∈ hero|supporting|reference.",
+      "sources": "Array of citations: { name, title, url, publisher }. 'name' is a short label; include at least one source link per panel.",
+      "design": "Display hints: { palette, layout, illustration } to guide the panel designer.",
+      "status": "Production state: draft | needs-image-clearance | needs-illustration | ready."
+    }
+  },
+  "panels": [
+    {
+      "id": "A",
+      "name": "site-location-geography",
+      "placardLabel": "Bura Placard A",
+      "heroHeight": 680,
+      "title": "A Bend in the Niger",
+      "subtitle": "Where the Bura culture buried its dead",
+      "format": "Sepia topographic illustration",
+      "panelCaption": "Bura-Asinda-Sikka sits on a terrace of the middle Niger River valley in south-west Niger.",
+      "description": "The Bura necropolis lies in the Tillabéri Region (Téra Department) of south-west Niger, in the middle Niger River valley about 120–150 km north-west of Niamey, near the Burkina Faso border. The main necropolis is roughly one kilometre across, set in a natural cirque framed by 10–20 m buttes. Abundant river-terrace clay fed a vast terracotta tradition; the type-site anchors a network of 800+ related sites strung along the valley.",
+      "body": "Bura is the type-site of the Bura culture and was added to the UNESCO World Heritage Tentative List on 26 May 2006. Field surveys describe an ensemble of sites spanning ~450 km across western Niger — from the Malian border to the meanders of the 'W' river bend — including necropoleis, altars and habitation zones.",
+      "keyFacts": [
+        "Region: Tillabéri, Téra Department, south-west Niger",
+        "Setting: middle Niger River valley, floodplain terrace",
+        "Coordinates (primary): 13°53′53″N 1°02′20″E (verify before printing)",
+        "~120–150 km north-west of Niamey",
+        "Main necropolis ≈ 1 km diameter; type-site of 800+ related sites",
+        "UNESCO Tentative List, 26 May 2006"
+      ],
+      "images": [
+        {
+          "url": "./assets/bura-site-map-context.png",
+          "caption": "The Bura site within the wider middle-Niger valley: feeder tributaries and roads (OpenStreetMap), with the documented 250×150 km distribution corridor of the ~834 related Bura-culture sites (UNESCO TL #5045) shown schematically from the Malian border to the 'W' river bend.",
+          "credit": "Terrain: SRTM (public domain) · Roads/rivers: © OpenStreetMap contributors (ODbL) · Sites: UNESCO TL #5045 / Wikipedia",
+          "license": "SRTM public domain; OSM data under ODbL (attribution required)",
+          "role": "hero"
+        },
+        {
+          "url": "https://archiqoo.com/locations/bura_site_niger.php",
+          "caption": "Bura Archaeological Site entry with location data and UNESCO Tentative List details (image credit ArellanoAlonso Foundation, CC BY-SA 4.0 via Wikimedia Commons).",
+          "credit": "ArellanoAlonso Foundation / Wikimedia Commons",
+          "license": "CC BY-SA 4.0 (verify)",
+          "role": "reference"
+        }
+      ],
+      "sources": [
+        { "name": "Wikipedia", "title": "Bura archaeological site", "url": "https://en.wikipedia.org/wiki/Bura_archaeological_site", "publisher": "Wikimedia Foundation" },
+        { "name": "UNESCO", "title": "Bura Archaeological Site — Tentative List #5045 (450 km / 250×150 km ensemble, 834 sites)", "url": "https://whc.unesco.org/en/tentativelists/5045", "publisher": "UNESCO World Heritage Centre" },
+        { "name": "OpenStreetMap", "title": "Roads & waterways (feeder tributaries) — © OpenStreetMap contributors, ODbL", "url": "https://www.openstreetmap.org/copyright", "publisher": "OpenStreetMap (ODbL)" }
+      ],
+      "design": { "palette": "map ochre + node accents", "layout": "sepia topographic map of the Niger river bend with the Bura site pinned at its GPS location", "illustration": "generated by tools/make_site_map_variants.py from public-domain SRTM elevation (multidirectional hillshade) + Natural Earth hydrography, toned to the panel palette" },
+      "usageNote": "Generated from public-domain data (SRTM elevation + Natural Earth) — no attribution required.",
+      "status": "draft"
+    },
+    {
+      "id": "B",
+      "name": "excavation-history",
+      "placardLabel": "Bura Placard B",
+      "title": "The Village of the Dead",
+      "subtitle": "Boubé Gado and the 1983 excavation",
+      "format": "Black-and-white archival photo panel",
+      "panelCaption": "Accidentally found in 1975; systematically excavated in 1983 by Nigerien archaeologist Boubé Gado.",
+      "description": "A terracotta head turned up by chance near Bura-Asinda-Sikka in 1975 and was reported to the Institute for Research in Human Sciences (IRSH) at the University of Niamey. After a small 1978 dig, Boubé Gado led the first systematic excavation in 1983, opening a 25 × 20 m area and revealing over 600 (≈630) funerary urns — naming the site a necropolis, 'un village des morts'.",
+      "body": "Gado published the foundational account in 1993 (\"Un 'village des morts' à Bura en République du Niger\") in the catalogue 'Vallées du Niger'. The work was modestly financed by the University of Niamey and the French Ministry of Foreign Affairs, and the Bura-Asinda exhibition toured France in the 1990s. The site has since suffered extensive looting — Le Monde reports ~90% of Niger's Bura sites damaged since 1994 — which is part of why documented excavation imagery matters.",
+      "keyFacts": [
+        "1975 — accidental discovery (terracotta head)",
+        "1978 — first small-scale dig (IRSH, Univ. Niamey)",
+        "1983 — systematic excavation by Boubé Gado, 25 × 20 m trench",
+        "≈630 funerary urns recovered",
+        "Foundational paper: Gado, B. (1993), 'Vallées du Niger'",
+        "Heavy looting since the 1990s (Le Monde: ~90% of sites damaged)"
+      ],
+      "images": [
+        {
+          "url": "./assets/bura-excavation-france24.jpg",
+          "caption": "Archaeological work on brick structures in an arid landscape, Niger.",
+          "credit": "France24 (original rights holder unverified)",
+          "license": "editorial — demo only, not cleared for distribution",
+          "role": "hero"
+        },
+        {
+          "url": "./assets/bura-excavation-skeleton.jpg",
+          "caption": "Human skeletal remains partially exposed during excavation, Niger.",
+          "credit": "NigerHeritage.org",
+          "license": "editorial — demo only, not cleared for distribution",
+          "role": "supporting"
+        }
+      ],
+      "sources": [
+        { "name": "Academia.edu", "title": "Haour, A. — One Hundred Years of Archaeology in Niger (cites Gado 1993)", "url": "https://www.academia.edu/25047356/One_Hundred_Years_of_Archaeology_in_Niger", "publisher": "Journal of World Prehistory" },
+        { "name": "Smithsonian", "title": "Archéologie au Niger — Gado, Maga, Idé (2001)", "url": "https://www.si.edu/object/siris_sil_778331", "publisher": "Smithsonian Institution" },
+        { "name": "Wikipedia", "title": "Bura archaeological site — Artifacts and looting", "url": "https://en.wikipedia.org/wiki/Bura_archaeological_site", "publisher": "Wikimedia Foundation" }
+      ],
+      "design": { "palette": "map ochre + node accents", "layout": "period excavation photo with typed-caption strip and date", "illustration": "secure a rights-cleared field photo from IRSH / Musée National du Niger / Smithsonian 2001 show" },
+      "status": "draft"
+    },
+    {
+      "id": "C",
+      "name": "ceramic-typology",
+      "placardLabel": "Bura Placard C",
+      "title": "Forms of the Bura Potter",
+      "subtitle": "A field classification of vessels and figures",
+      "format": "Line-drawing typology grid",
+      "panelCaption": "From tubular urns to mounted horsemen — the main Bura ceramic forms.",
+      "description": "Bura terracottas range from tall tubular urns (70–80 cm) and round/semi-ovoid urns to vessels surmounted by stylized human heads, standing figures and equestrian riders, plus zoomorphic forms. Surfaces carry scarification (incised marks) and raised ridged designs thought to encode the deceased's identity — status, occupation or hairstyle. Bura is credited by UNESCO with some of the oldest equestrian clay statues in the Sahel.",
+      "body": "Intact human or equestrian figures are very rare; most survive as heads or fragments. The rider figures bear a loose resemblance to later Djenné pieces and point to the prestige of the horse as a status marker before Islamic influence. A typology chart should show: (1) tubular urn, (2) ovoid/spherical urn, (3) head-topped cap, (4) standing anthropomorphic figure, (5) equestrian figure, (6) zoomorphic vessel.",
+      "keyFacts": [
+        "Tubular urns 70–80 cm tall; round/semi-ovoid urns",
+        "Caps/figures: stylized heads, standing figures, horsemen, animals",
+        "Decoration: scarification (incised) + raised ridged designs",
+        "Oldest equestrian clay statues in the Sahel (per UNESCO)",
+        "Intact figures extremely rare; mostly heads/fragments survive"
+      ],
+      "images": [
+        {
+          "url": "./assets/met-317898-grave-marker.jpg",
+          "caption": "Tubular Bura grave marker (terracotta, H. 80 cm) with dense scarification and raised ridged designs — the type-form of the typology.",
+          "credit": "The Metropolitan Museum of Art, Gift of Jerome Vogel, 1998 (1998.478.1)",
+          "license": "Public Domain (CC0 — Met Open Access)",
+          "role": "hero"
+        },
+        {
+          "url": "https://www.mulvaneartmuseum.org/_files/images/exhibitions/2024/bura-1-thumb.JPG",
+          "caption": "Bura terracotta with geometric carved decoration (Mulvane Art Museum, 2024 exhibition).",
+          "credit": "Mulvane Art Museum, Washburn University",
+          "license": "verify with museum",
+          "role": "reference"
+        }
+      ],
+      "sources": [
+        { "name": "African Arts (MIT)", "title": "Bura Funerary Urns: Niger Terracottas — An Interpretive Limbo?", "url": "https://direct.mit.edu/afar/article/53/1/66/55147/Bura-Funerary-Urns-Niger-Terracottas-An", "publisher": "African Arts, MIT Press" },
+        { "name": "The Met", "title": "Grave Marker, Bura peoples (1998.478.1) — Open Access", "url": "https://www.metmuseum.org/art/collection/search/317898", "publisher": "The Metropolitan Museum of Art" },
+        { "name": "Yale University Art Gallery", "title": "Anthropomorphic Figure, Bura, 4th–13th c.", "url": "https://artgallery.yale.edu/collections/objects/145085", "publisher": "Yale University Art Gallery" }
+      ],
+      "design": { "palette": "map ochre + node accents", "layout": "6-cell classification grid with scale bar (human silhouette for scale)", "illustration": "commission original line drawings from reference photos" },
+      "status": "needs-illustration"
+    },
+    {
+      "id": "D",
+      "name": "burial-context",
+      "placardLabel": "Bura Placard D",
+      "title": "Sealed for the Afterlife",
+      "subtitle": "How a Bura grave was arranged",
+      "format": "Archaeological cross-section diagram",
+      "panelCaption": "Urns set into the earth, often inverted, capped with a face — a guardian for the dead.",
+      "description": "Bura ceramics are funerary objects. Urns were typically placed in tight clusters and frequently inverted over the burial; human skeletal remains lay roughly 1–1.5 m below. Vessels held bones (sometimes only a skull) plus grave goods — iron arrowheads, bracelets or rings, and quartzite beads. A secondary statuette — a face in the likeness of the deceased, or an animal effigy — was set in the opening to protect and guide the dead.",
+      "body": "Researchers read the spherical, sky-facing urns and the phallic/tubular forms as distinct rites, and interpret a skull placed inside a guardian urn as a companion (servant, spouse or kin) meant to accompany the principal burial. The artifact anchoring this gallery — a clay jar-top face — most likely functioned exactly here: as a container cap or grave marker.",
+      "keyFacts": [
+        "Urns clustered and often inverted over the burial",
+        "Skeletal remains ≈ 1–1.5 m below the vessel",
+        "Contents: bones/skull + iron arrowheads, bracelets, rings, quartzite beads",
+        "Face/animal statuette set in the opening as a 'guardian'",
+        "Scarification designs may encode status, trade or hairstyle"
+      ],
+      "images": [
+        {
+          "url": "./assets/met-317899-grave-marker.jpg",
+          "caption": "A Bura grave marker / vessel of the kind set over a burial — often inverted, capping the interred remains below.",
+          "credit": "The Metropolitan Museum of Art (1998.478.2)",
+          "license": "Public Domain (CC0 — Met Open Access)",
+          "role": "hero"
+        },
+        {
+          "url": "./assets/met-318379-bracelet.jpg",
+          "caption": "Bura bracelet — the class of metal grave goods (bracelets, rings, arrowheads) found inside the burials.",
+          "credit": "The Metropolitan Museum of Art, Gift of Drs. John and Nicole Dintenfass, 1999 (1999.486.5)",
+          "license": "Public Domain (CC0 — Met Open Access)",
+          "role": "supporting"
+        }
+      ],
+      "sources": [
+        { "name": "Mulvane Art Museum", "title": "Funerary Vessels from the Niger River Valley", "url": "https://www.mulvaneartmuseum.org/exhibitions/exhibitions-blocks/2024-Exhibits/Bura-virtual.html", "publisher": "Washburn University" },
+        { "name": "The Met", "title": "Bura grave markers & bracelet (Open Access)", "url": "https://www.metmuseum.org/art/collection/search/317898", "publisher": "The Metropolitan Museum of Art" },
+        { "name": "Grokipedia", "title": "Bura archaeological site — funerary practices", "url": "https://grokipedia.com/page/bura_archaeological_site", "publisher": "Grokipedia" }
+      ],
+      "design": { "palette": "map ochre + node accents", "layout": "ground-line cross-section: inverted urn at surface, capping face, skeleton + grave goods below", "illustration": "commission original cutaway diagram" },
+      "status": "needs-illustration"
+    },
+    {
+      "id": "E",
+      "name": "cultural-network",
+      "placardLabel": "Bura Placard E",
+      "title": "A Corridor of Clay",
+      "subtitle": "Bura among West Africa's terracotta cultures",
+      "format": "Map + timeline infographic",
+      "panelCaption": "Bura belongs to a 2,000-year West African tradition of figurative terracotta.",
+      "description": "Bura sits within a long arc of West African terracotta-producing cultures that may share roots in the earlier Nok tradition. Placed on a map and timeline, the nodes connect: Nok (Nigeria, c. 1500 BCE–200/500 CE), Jenne-Jeno (Mali), Koma (Ghana), Igbo-Ukwu and Ile-Ife (Nigeria), and Bura (Niger, c. 3rd–13th c. CE). Bura's valley would later give rise to the Songhai Empire.",
+      "body": "Nok is regarded as the earliest large figurative sculptural tradition in sub-Saharan Africa and an early centre of iron-smelting; scholars suggest later traditions — Bura among them — 'may have been shaped by' that ancestral clay tradition. The panel should make clear these are related but distinct cultures across different centuries, not a single lineage.",
+      "keyFacts": [
+        "Nok (Nigeria): c. 1500 BCE – 200/500 CE — earliest figurative terracotta",
+        "Jenne-Jeno (Mali): urban centre, ~11th–12th c. CE terracottas",
+        "Koma (Ghana): c. 7th–15th c. CE",
+        "Igbo-Ukwu / Ile-Ife (Nigeria): 9th–15th c. CE",
+        "Bura (Niger): c. 3rd–13th c. CE",
+        "Shared themes: terracotta figures, ironworking, funerary ritual"
+      ],
+      "images": [
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/e/ea/Nok_terracotta_figurine.jpg",
+          "caption": "Nok terracotta figurine — the ancestral West African terracotta tradition.",
+          "credit": "Wikimedia Commons",
+          "license": "check item page (likely CC/PD)",
+          "role": "supporting"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Nok_sculpture_Louvre_70-1998-11-1.jpg/250px-Nok_sculpture_Louvre_70-1998-11-1.jpg",
+          "caption": "Nok sculpture (Louvre) — figurative style ancestral to later traditions.",
+          "credit": "Wikimedia Commons / Louvre",
+          "license": "check item page",
+          "role": "reference"
+        }
+      ],
+      "sources": [
+        { "name": "Wikipedia", "title": "Nok culture (lists Bura, Koma, Jenne-Jeno, Ile-Ife)", "url": "https://en.wikipedia.org/wiki/Nok_culture", "publisher": "Wikimedia Foundation" },
+        { "name": "The Met", "title": "Nok Terracottas (500 B.C.–200 A.D.) — Heilbrunn Timeline", "url": "https://www.metmuseum.org/essays/nok-terracottas-500-b-c-200-a-d", "publisher": "The Metropolitan Museum of Art" },
+        { "name": "World History Encyclopedia", "title": "Nok Culture", "url": "https://www.worldhistory.org/Nok_Culture", "publisher": "World History Encyclopedia" }
+      ],
+      "design": { "palette": "map ochre + node accents", "layout": "West Africa basemap with labelled nodes linked by a timeline ribbon", "illustration": "commission original map/timeline; use Wikimedia Nok images only after license check" },
+      "usageNote": "For demo purposes only — not for distribution. The Nok comparison images are pulled from Wikimedia and the map is illustration-pending; verify each Wikimedia licence and draw an original map before any public use.",
+      "status": "needs-illustration"
+    },
+    {
+      "id": "F",
+      "name": "museum-holdings-provenance",
+      "placardLabel": "Bura Placard F",
+      "title": "From Niger Soil to the Vitrine",
+      "subtitle": "Holdings, provenance and the ethics of collecting",
+      "format": "Text + institution panel with a provenance trail",
+      "panelCaption": "Where Bura objects are held today — and the looting that shadows them.",
+      "description": "Documented Bura terracottas are held by the Musée National du Niger (Niamey), the Musée du quai Branly–Jacques Chirac (Paris), the Smithsonian's National Museum of African Art (Washington DC, 2001 'Archéologie au Niger'), Yale University Art Gallery, and the Mulvane Art Museum, among others. Because ~90% of Bura sites have been looted since 1994, provenance matters: ICOM lists Bura funerary objects on its Red List of at-risk West African heritage.",
+      "body": "A provenance trail makes the journey legible. Yale's Bura anthropomorphic figure, for example, is recorded as: Wayne Cancro, Jersey City (1981–2004) → SusAnna and Joel B. Grae, New York (2004–2010) → Yale University Art Gallery (2010–). Pairing a clear chain of custody with the ICOM Red List turns the panel into a statement on responsible stewardship — and connects directly to the gallery's own Met relief.",
+      "keyFacts": [
+        "Holdings: Musée National du Niger; quai Branly (Paris); Smithsonian NMAfA; Yale; Mulvane",
+        "Smithsonian show: 'Archéologie au Niger' (2001), Gado/Maga/Idé",
+        "ICOM Red List (West Africa) flags Bura funerary objects as at-risk",
+        "~90% of Niger's Bura sites looted/damaged since 1994 (Le Monde)",
+        "Example trail: Cancro → Grae → Yale University Art Gallery"
+      ],
+      "images": [
+        {
+          "url": "./assets/met-317908-torque.jpg",
+          "caption": "A Bura torque (cast neck-ring) now in a museum vitrine — The Met, New York. The gallery's own anchor grave-marker face comes from this same Met Bura collection.",
+          "credit": "The Metropolitan Museum of Art, Gift of Drs. John and Nicole Dintenfass, 1998 (1998.480.5)",
+          "license": "Public Domain (CC0 — Met Open Access)",
+          "role": "hero"
+        },
+        {
+          "url": "https://icom.museum/en/object/terracotta-funerary-vessel-with-a-human-figure-bura-culture-niger-ca-4th-13th-c-adad-57-15-x-23-5-x-17-78-cm",
+          "caption": "Bura terracotta funerary vessel on the ICOM Red List of West African heritage at risk.",
+          "credit": "ICOM (International Council of Museums)",
+          "license": "verify with ICOM",
+          "role": "reference"
+        }
+      ],
+      "sources": [
+        { "name": "Yale University Art Gallery", "title": "Anthropomorphic Figure, Bura — provenance record", "url": "https://artgallery.yale.edu/collections/objects/145085", "publisher": "Yale University Art Gallery" },
+        { "name": "The Met", "title": "Grave Marker, Bura peoples (1998.478.1) — Open Access", "url": "https://www.metmuseum.org/art/collection/search/317898", "publisher": "The Metropolitan Museum of Art" },
+        { "name": "ICOM", "title": "Terracotta funerary vessel, Bura culture — Red List", "url": "https://icom.museum/en/object/terracotta-funerary-vessel-with-a-human-figure-bura-culture-niger-ca-4th-13th-c-adad-57-15-x-23-5-x-17-78-cm", "publisher": "International Council of Museums" },
+        { "name": "Musée du quai Branly", "title": "History of the Collections", "url": "https://m.quaibranly.fr/en/collections/all-collections/history-of-the-collections", "publisher": "musée du quai Branly – Jacques Chirac" },
+        { "name": "Smithsonian", "title": "Archéologie au Niger (2001)", "url": "https://www.si.edu/object/siris_sil_778331", "publisher": "Smithsonian Institution" }
+      ],
+      "design": { "palette": "map ochre + node accents", "layout": "horizontal provenance arrow (soil → collection → institution) above an institution list", "illustration": "text-led; institution wordmarks only with permission" },
+      "status": "draft"
+    }
+  ],
+  "bibliography": [
+    { "name": "Gado 1993", "title": "Un 'village des morts' à Bura en République du Niger", "publisher": "in 'Vallées du Niger' (foundational paper)" },
+    { "name": "Haour 2003", "title": "One hundred years of archaeology in Niger", "publisher": "Journal of World Prehistory 17:181–234" },
+    { "name": "African Arts 53(1)", "title": "Bura Funerary Urns: Niger Terracottas — An Interpretive Limbo?", "publisher": "MIT Press", "url": "https://direct.mit.edu/afar/article/53/1/66/55147/Bura-Funerary-Urns-Niger-Terracottas-An" },
+    { "name": "Wikipedia", "title": "Bura archaeological site", "url": "https://en.wikipedia.org/wiki/Bura_archaeological_site" },
+    { "name": "Mulvane Art Museum", "title": "Funerary Vessels from the Niger River Valley (2024)", "url": "https://www.mulvaneartmuseum.org/exhibitions/exhibitions-blocks/2024-Exhibits/Bura-virtual.html" }
+  ]
+}

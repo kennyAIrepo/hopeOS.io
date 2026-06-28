@@ -1859,7 +1859,10 @@ function initUIChrome() { buildHub(); injectHides(); }
 function applyMode(mode) {
   expMode = mode;
   const gallery = mode === 'gallery';
-  UI_PANELS.forEach(p => { if (!p.auth) return; if (gallery) setPanel(p.id, false); else if (p.id !== 'createBar') setPanel(p.id, true); });
+  // Clear/stamp ui-hidden on all authoring panels. createBar is INCLUDED so game mode
+  // removes its ui-hidden — its real visibility is then driven by the build toggle's
+  // inline display (otherwise ui-hidden's !important would keep it stuck hidden).
+  UI_PANELS.forEach(p => { if (p.auth) setPanel(p.id, !gallery); });
   setPanel('ai', true);                                            // ask-the-world stays in both modes
   document.getElementById('ai').classList.toggle('gallery-min', gallery);
   document.getElementById('uiHub').style.display = gallery ? 'none' : 'block';   // hub is a game-mode tool
@@ -1872,7 +1875,6 @@ function applyMode(mode) {
   document.getElementById('exitBtn').classList.remove('ui-hidden');              // EXIT stays in both
   if (gallery) { document.getElementById('selBar').classList.remove('show');     // no selection toolbar in gallery
     if (editor && editor.clearSelection) editor.clearSelection(); }
-  if (!gallery && buildMode) setPanel('createBar', true);          // restore create panel if mid-build
   if (typeof refreshEditor === 'function') refreshEditor();        // gallery disables click-select; game restores it
   buildHub();
   flash(gallery ? '🖼 Gallery — view & navigate' : '🛠 Game engine');

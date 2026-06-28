@@ -41,6 +41,7 @@ video.h{display:none}
   background:rgba(0,0,0,.5);padding:6px 16px;border-radius:6px;backdrop-filter:blur(6px);
   color:#9bf;text-align:center;pointer-events:none;opacity:0;transition:opacity .4s}
 #hud.show{opacity:1}
+#hud.flexhud{color:#39ff5a;border:1px solid rgba(57,255,90,.4);text-shadow:0 0 8px rgba(57,255,90,.5);letter-spacing:.5px}
 #legend{position:fixed;bottom:14px;left:14px;z-index:20;font-size:10px;line-height:1.7;color:#7fe6a8;
   font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;letter-spacing:.02em;
   background:rgba(2,7,5,.55);padding:10px 14px;border-radius:8px;backdrop-filter:blur(6px);
@@ -1804,8 +1805,35 @@ function enterWorld() {
   // Experience chooser: every fresh entry asks Gallery vs Game. Entering straight into
   // build (lobby "Create" / /build) skips the gate and goes full editor (mode switch still shown).
   initUIChrome();
-  if (BUILD_MODE || ENTRY_MODE === 'create') applyMode('game');
+  if (FLEX_MODE) {
+    // ⚗ FLEX lab: blank full-access sandbox — straight into build with the build agent,
+    // the whole stack exposed as window.FLEX, grid on for orientation.
+    setBuildMode(true);
+    setAgentMode('build', false);
+    applyMode('game');
+    if (grid) grid.setVisible(true);
+    exposeFlex();
+    els.hud.textContent = '⚗ FLEX LAB — full-access sandbox · everything is window.FLEX (run FLEX.help())';
+    els.hud.classList.add('flexhud');
+  } else if (BUILD_MODE || ENTRY_MODE === 'create') applyMode('game');
   else showModeGate();
+}
+
+// Expose the ENTIRE live stack + SDK classes for unconstrained scripting (DEI console,
+// the build agent's run_script, or our own component modules). No guardrails in the lab.
+function exposeFlex() {
+  window.FLEX = {
+    hope, world, nav, embody, agent, voice, manip, editor, grid, tracer,
+    THREE: hope.THREE, scene: hope.scene, camera: hope.camera, renderer: hope.renderer,
+    rapier: (world && world.world) || null, worldTemplate: world,
+    sdk: { HopeOS, WorldTemplate, AvatarNavigator, EmbodimentManager, WorldAgent,
+           AssetManipulator, ObjectEditor, SpatialGrid, SurfaceTracer, VoiceCommander,
+           searchModels, resolveGLB, createBrowser, BuilderAgent, WorldStore },
+    help() { const k = Object.keys(this).filter(x => x !== 'help');
+      console.log('%c⚗ window.FLEX', 'color:#39ff5a;font-weight:bold', k);
+      console.log('   sdk classes:', Object.keys(this.sdk)); return k; },
+  };
+  console.log('%c⚗ FLEX lab ready — full stack exposed as window.FLEX (run FLEX.help())', 'color:#39ff5a;font-weight:bold');
 }
 els.play.addEventListener('click', enterWorld);
 
@@ -1960,6 +1988,9 @@ const PATH = location.pathname.replace(/\/+$/, '');
 // A published world opens at /world/<name> (served via the Vercel rewrite → world.html).
 const WORLD_SLUG = decodeURIComponent((PATH.match(/\/world\/([^/?#]+)/) || [])[1] || '');
 const BUILD_MODE = PARAMS.get('build') === '1' || ENTRY_MODE === 'build' || PATH === '/build';
+// ⚗ FLEX lab — hidden full-access sandbox (not in the menu). Blank buildable space,
+// straight into build, the whole stack exposed as window.FLEX. URL: /flex (or /flex/<name>).
+const FLEX_MODE = PATH === '/flex' || PATH.startsWith('/flex/');
 
 // ═══════════════ BUILD YOUR OWN WORLD ═══════════════
 // Black-screen chat → browse Sketchfab scenes or upload a GLB → that scene becomes
@@ -2590,8 +2621,16 @@ async function openDraftByName(name) {
   } catch (e) { console.error(e); els.play.textContent = 'ERROR: ' + e.message; startBuilder(); }
 }
 
-dbg('route: slug=' + JSON.stringify(WORLD_SLUG) + ' draft=' + JSON.stringify(DRAFT_NAME) + ' build=' + BUILD_MODE + ' path=' + PATH);
+// ⚗ FLEX — boot a BLANK world (no GLB; invisible floor) and auto-enter the lab.
+async function startFlex() {
+  activeWorldConfig = { modelUrl: null, label: 'flex lab', spawnXZ: { x: 0, z: 0 } };
+  try { await boot(); enterWorld(); }
+  catch (e) { console.error(e); dbg('X flex boot failed: ' + e.message); els.play.textContent = 'ERROR: ' + e.message; }
+}
+
+dbg('route: slug=' + JSON.stringify(WORLD_SLUG) + ' draft=' + JSON.stringify(DRAFT_NAME) + ' build=' + BUILD_MODE + ' flex=' + FLEX_MODE + ' path=' + PATH);
 if (WORLD_SLUG) loadPublishedWorld(WORLD_SLUG);
+else if (FLEX_MODE) startFlex();
 else if (DRAFT_NAME) openDraftByName(DRAFT_NAME);
 else if (BUILD_MODE) startBuilder();
 else boot().catch(e => { console.error(e); dbg('X boot failed: ' + e.message); els.play.textContent = 'ERROR: ' + e.message; });

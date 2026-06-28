@@ -2,8 +2,9 @@
 
 A reference for how the full system is built: the layers, the runtime, the SDK modules,
 the serverless API, the data model, and the cross-cutting concerns. See
-[CONCEPT.md](CONCEPT.md) for the product vision and [BACKLOG.md](BACKLOG.md) for
-recommendations.
+[CONCEPT.md](CONCEPT.md) for the product vision, [BACKLOG.md](BACKLOG.md) for
+recommendations, and [BUG_REPORTING.md](BUG_REPORTING.md) for the end-to-end bug-report →
+GitHub-issue flow.
 
 ---
 
@@ -253,7 +254,7 @@ All functions are thin and stateless. Files prefixed `_` are **helpers, not rout
 | [api/world/index.js](api/world/index.js) | GET | List published worlds (public library) | Blob token |
 | [api/world/[name]/index.js](api/world/[name]/index.js) | GET/POST | Read/write a world snapshot | Blob token |
 | [api/world/[name]/activity.js](api/world/[name]/activity.js) | — | Per-world activity | Blob token |
-| [api/bugs.js](api/bugs.js) | GET/POST | Store bug + screenshot in Blob, auto-file GitHub issue | Blob, `GITHUB_TOKEN`, `GITHUB_REPO` |
+| [api/bugs.js](api/bugs.js) | GET/POST | Store bug + screenshot in Blob, auto-file GitHub issue (see [BUG_REPORTING.md](BUG_REPORTING.md)) | Blob, `GITHUB_TOKEN`, `GITHUB_REPO` |
 | [api/_blob.js](api/_blob.js) | helper | Resolve Blob token by name **or** by `vercel_blob_rw_` value prefix | — |
 | [api/_admin.js](api/_admin.js) | helper | `requireAdmin` gate (`x-admin-key` / `?key=`) for owner reads | `ADMIN_KEY` |
 

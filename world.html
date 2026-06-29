@@ -2121,6 +2121,25 @@ function repinTransforms(placed) {
   for (const { id, t } of (placed || [])) world.setObjectTransform(id, t);
 }
 
+// ── World boot-hooks (per published slug) ──────────────────────────────────────
+// Some published worlds carry a curated exhibit whose placards are generated at
+// RUNTIME (canvas textures rendered from a data file) rather than saved as GLB props,
+// so they aren't part of the world snapshot. Re-mount them on every boot of that world.
+// Paths are absolute (site root) because /world/<slug> is a rewrite — relative imports
+// would resolve against /world/… and 404.
+const EXHIBIT_HOOKS = {
+  aabcart_2_2: async () => {
+    const m = await import('/gallery/bura-ceramics/scene.js');
+    await m.mountBuraPlacards(world, hope.THREE, { dataUrl: '/gallery/bura-ceramics/panels.json' });
+  },
+};
+async function runExhibitHook() {
+  const hook = EXHIBIT_HOOKS[WORLD_SLUG];
+  if (!hook) return;
+  try { await hook(); dbg('exhibit hook mounted: ' + WORLD_SLUG); }
+  catch (e) { console.warn('[exhibit] mount failed:', e); dbg('X exhibit hook: ' + e.message); }
+}
+
 // Open a saved snapshot: resolve its base scene, boot, restore objects + avatar, drop in.
 async function openSavedWorld(rec) {
   if (_building) return; _building = true;
@@ -2149,6 +2168,7 @@ async function openSavedWorld(rec) {
     // stream in afterward in the background.
     enterWorld();
     flash('opened “' + rec.name + '”');
+    runExhibitHook();                           // re-mount runtime-generated exhibit placards for this world
     world.setPendingOverrides(rec.overrides);   // apply edits to AI/script objects as they're (re)created
     restoreObjects(rec.objects).then(async (placed) => {
       await replayScripts(rec.scripts);         // sequential → stable ids → overrides match

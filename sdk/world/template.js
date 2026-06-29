@@ -1409,6 +1409,10 @@ export class WorldTemplate {
       // bytes) are re-created by their saved script on load — don't ALSO save them as
       // objects, or they'd come back as phantom boxes (no url/ptype to rebuild from).
       .filter(a => !(a.source === 'ai' && !cleanUrl(a.url) && !(a.blob instanceof Blob)))
+      // Runtime-generated exhibit placards (canvas textures from a data file) are
+      // re-mounted by a world boot-hook on every load — never persist them, or they'd
+      // reload as phantom boxes (no url/ptype to rebuild from).
+      .filter(a => a.source !== 'bura-placard')
       .map((a) => {
       const m = a.mesh, isImport = a.ptype === 'import';
       // Derive the shape from the LIVE geometry, not the stale a.ptype — a primitive

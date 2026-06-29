@@ -11,9 +11,10 @@
 // are in scope:
 //
 //   const { mountBuraPlacards } = await import('./gallery/bura-ceramics/scene.js');
-//   await mountBuraPlacards(world, THREE);                 // default wall row of 6
+//   await mountBuraPlacards(world, THREE);                 // back-wall row (current layout)
 //   // or supply explicit placements (one per panel A..F):
 //   await mountBuraPlacards(world, THREE, { placements: [...] });
+//   await mountBuraPlacards(world, THREE, { layout: 'origin' }); // generated centred row
 //
 // Re-running unmounts the previous set first (idempotent).
 
@@ -30,6 +31,19 @@ function withResolvedImages(panel, baseDir) {
   });
   return { ...panel, images };
 }
+
+// The current in-world placement: the six lettered placards form one evenly-spaced
+// row across the gallery back wall (plane z ~= -5.93), facing +Z into the room.
+// Captured from the live world so `mountBuraPlacards(world, THREE)` re-renders the
+// exhibit exactly where it sits now. Order matches panels.json (A..F).
+export const BACK_WALL_PLACEMENTS = [
+  { position: [-9.07, 3.89, -5.58], rotationDeg: [0, 0, 0], size: [1.34, 1.92] }, // A
+  { position: [-7.42, 3.89, -5.59], rotationDeg: [0, 0, 0], size: [1.34, 1.92] }, // B
+  { position: [-5.77, 3.89, -5.64], rotationDeg: [0, 0, 0], size: [1.34, 1.92] }, // C
+  { position: [-4.13, 3.89, -5.70], rotationDeg: [0, 0, 0], size: [1.34, 1.92] }, // D
+  { position: [-2.48, 3.89, -5.72], rotationDeg: [0, 0, 0], size: [1.34, 1.92] }, // E
+  { position: [-0.83, 3.89, -5.78], rotationDeg: [0, 0, 0], size: [1.34, 1.92] }, // F
+];
 
 // A default row of portrait placards centred on the origin, facing +Z.
 // Override any of these via opts, or pass opts.placements for full control.
@@ -83,7 +97,14 @@ export async function mountBuraPlacards(world, THREE, opts = {}) {
 
   unmountBuraPlacards(world);
 
-  const places = opts.placements || defaultPlacements(panels.length, opts);
+  // Default to the captured back-wall row; opts.placements overrides, and
+  // opts.layout === 'origin' falls back to the generated centred row.
+  let places = opts.placements;
+  if (!places) {
+    places = (opts.layout !== 'origin' && panels.length === BACK_WALL_PLACEMENTS.length)
+      ? BACK_WALL_PLACEMENTS
+      : defaultPlacements(panels.length, opts);
+  }
   const ids = [];
 
   for (let i = 0; i < panels.length; i++) {

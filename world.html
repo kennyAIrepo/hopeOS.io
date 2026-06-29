@@ -2172,7 +2172,6 @@ async function openSavedWorld(rec) {
     // stream in afterward in the background.
     enterWorld();
     flash('opened “' + rec.name + '”');
-    runExhibitHook();                           // re-mount runtime-generated exhibit placards for this world
     world.setPendingOverrides(rec.overrides);   // apply edits to AI/script objects as they're (re)created
     restoreObjects(rec.objects).then(async (placed) => {
       await replayScripts(rec.scripts);         // sequential → stable ids → overrides match
@@ -2182,7 +2181,11 @@ async function openSavedWorld(rec) {
       settle();
       setTimeout(settle, 200);
       setTimeout(settle, 700);
-    }).catch(() => {});
+      // Mount runtime-generated exhibit placards LAST — AFTER replayScripts + overrides — so
+      // any stale saved scripts that grab placards by label run first against nothing (harmless
+      // no-ops) and can't drag the authoritative boot-hook row out of place.
+      setTimeout(runExhibitHook, 750);
+    }).catch(() => { runExhibitHook(); });
   } catch (e) {
     _building = false;
     document.getElementById('bHint').textContent = 'could not open “' + rec.name + '”: ' + e.message;

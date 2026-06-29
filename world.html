@@ -1793,6 +1793,7 @@ function setLegend() {
     `🎯 <b>JUMP</b> (top-right): click to leap · <b>▦</b> grid toggle for placement<br>` +
     `⬛ Top-left <b>PLAY ⇄ CREATE</b> · 🗣️ AI bar (call objects by name)` +
     `</div>`;
+  els.legend.classList.add('collapsed');   // default collapsed — click the ⌨ CONTROLS header to expand
   document.getElementById('legendHead').addEventListener('click', () => els.legend.classList.toggle('collapsed'));
 }
 
@@ -1922,11 +1923,12 @@ function showModeGate() {
 }
 document.getElementById('modeGate').addEventListener('click', e => {
   const opt = e.target.closest('.mg-opt'); if (!opt) return;
-  // Gallery → offer Free-roam vs Guided tour (the merged curation intro). If it takes over,
-  // it closes the gate + applies gallery itself; otherwise fall through to plain gallery.
-  if (opt.dataset.mode === 'gallery' && offerCurationGate()) return;
+  const gate = document.getElementById('modeGate');
+  // Gallery → fly into the merged curation intro (Free-roam vs Guided tour). Hide the chooser
+  // so the two panels never coexist; the curation intro's buttons apply gallery + start/skip.
+  if (opt.dataset.mode === 'gallery' && offerCurationGate()) { gate.classList.remove('show'); return; }
   applyMode(opt.dataset.mode);
-  document.getElementById('modeGate').classList.remove('show');
+  gate.classList.remove('show');
 });
 document.getElementById('modeSwitch').addEventListener('click', () => applyMode(expMode === 'gallery' ? 'game' : 'gallery'));
 document.getElementById('uiHubBtn').addEventListener('click', () => document.getElementById('uiHubMenu').classList.toggle('open'));

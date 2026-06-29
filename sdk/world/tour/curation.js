@@ -100,6 +100,7 @@ export class CurationTour {
     this.devYaw = 0; this.devPitch = 0; this._idle = 0; this._offT = 0;
     this.lookHome = { yaw: world.yaw || 0, pitch: 0 };
     this._tw = null;                // active tween {a,b,t,ms,onDone,kind}
+    this._introEase = null;         // gentle camera glide while the intro gate fades in
     this._present = null;           // active fly-in tween
     this._homes = new Map();        // assetId → {pos,quat,scale} so a piece always returns home
     this._anchor = null;            // viewer body pos at the current stop (for return-to-tour)
@@ -126,12 +127,31 @@ export class CurationTour {
   offerIntro() {
     if (!this.build()) return false;
     this._showIntro();
+    this._startIntroEase();              // "fly in" — slowly turn to face the gallery as the gate fades up
     return true;
+  }
+  _artifactsCentroid() {
+    const c = new THREE.Vector3(); let n = 0;
+    for (const s of this.stops) { c.add(this._center(s.asset.mesh)); n++; }
+    return n ? c.divideScalar(n) : this._eye().add(dirFromAngles(this.world.yaw, 0));
+  }
+  _startIntroEase() {
+    const home = lookAnglesTo(this._eye(), this._artifactsCentroid());
+    this._introEase = { a: { yaw: this.world.yaw, pitch: this.world.pitch },
+      b: { yaw: this.world.yaw + shortAngle(home.yaw - this.world.yaw), pitch: clamp(home.pitch, -0.45, 0.45) }, t: 0, ms: 2100 };
+  }
+  _stepIntroEase(dt) {
+    const e = this._introEase; e.t += dt * 1000;
+    const k = easeInOut(clamp(e.t / e.ms, 0, 1));
+    this.world.yaw = e.a.yaw + (e.b.yaw - e.a.yaw) * k;
+    this.world.pitch = e.a.pitch + (e.b.pitch - e.a.pitch) * k;
+    if (e.t >= e.ms) this._introEase = null;
   }
 
   /** Begin the walkthrough from the intro gate. */
   begin() {
     if (this.onBegin) { try { this.onBegin(); } catch {} }   // host applies Gallery mode + closes the chooser
+    this._introEase = null;
     this._hide(this.el.intro);
     this.active = true; this.paused = false;
     this._restorePlayerEuler();
@@ -166,7 +186,7 @@ export class CurationTour {
   /** Drop the rails: hand control back to normal play. */
   exitToFreeRoam(silent) {
     this._allHome();
-    this.active = false; this.state = 'idle'; this._tw = null; this._present = null;
+    this.active = false; this.state = 'idle'; this._tw = null; this._present = null; this._introEase = null;
     this.el.bar.classList.remove('show');
     this._hide(this.el.card); this._hide(this.el.ret); this._hide(this.el.intro);
     if (!silent) this._showEnd();
@@ -200,6 +220,7 @@ export class CurationTour {
 
   /** Advance tweens + detect wander-off. Call AFTER world.step. */
   update(dt) {
+    if (this._introEase) this._stepIntroEase(dt);   // runs while the intro gate is up (tour not yet active)
     if (!this.active) return;
     if (this._tw && !this.paused) this._stepTween(dt);
     if (this._present && !this.paused) this._stepPresent(dt);

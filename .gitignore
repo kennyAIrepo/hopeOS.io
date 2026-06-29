@@ -20,3 +20,8 @@ dei_config.local.js
 # map-generator download cache (SRTM tiles, Natural Earth, Overpass) — regenerable
 gallery/bura-ceramics/tools/cache/
 
+# Claude session transcripts + working notes — local only, never commit
+TRANSCRIPT-*.md
+CLAUDE.md
+CLAUDE.local.md
+

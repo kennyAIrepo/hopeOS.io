@@ -703,6 +703,7 @@ import { AssetManipulator } from '/sdk/world/asset-grab.js';
 import { ObjectEditor } from '/sdk/world/editor.js';
 import { SpatialGrid } from '/sdk/world/grid3d.js';
 import { SurfaceTracer } from '/sdk/world/surface-trace.js';
+import { CurationTour } from '/sdk/world/tour/curation.js';
 import { VoiceCommander } from '/sdk/interaction/voice.js';
 import { isPinch } from '/sdk/interaction/grab.js';
 import { searchModels, resolveGLB } from '/sdk/world/sketchfab.js';
@@ -752,7 +753,7 @@ document.getElementById('modeOpts').addEventListener('click', e => {
   o.classList.add('sel'); chosenMode = o.dataset.mode;
 });
 
-let hope, world, nav, embody, agent, voice, manip, editor, grid, tracer, running = false;
+let hope, world, nav, embody, agent, voice, manip, editor, grid, tracer, tour, running = false;
 let traceOn = false, paintOn = false, eraseOn = false, sketchOn = false, _drawMode = 'paint', spawnPickOn = false;
 let gridShown = false, jumpMode = false, gridMode = 'off', camOn = false;   // grid hidden + camera OFF by default (privacy); user opens camera via CAM
 
@@ -1145,8 +1146,14 @@ function _worldFrame(dt, frame) {
   // 1. Navigation intent (keyboard or gesture)
   const intent = nav.update(dt, frame);
 
+  // 1b. Curation tour: when active, it projects the look onto the curated rail (bounded gaze).
+  if (tour && tour.active) tour.steer(intent, dt);
+
   // 2. Drive the avatar through the world (physics, collision, gravity)
   world.step(dt, intent);
+
+  // 2c. Curation tour: advance the camera/present tweens + wander-off detection.
+  if (tour) tour.update(dt);
 
   // 2b. Zoom POV (two-hand pinch or mouse wheel) → camera FOV
   if (intent.zoom) {
@@ -2136,12 +2143,24 @@ async function openSavedWorld(rec) {
       settle();
       setTimeout(settle, 200);
       setTimeout(settle, 700);
+      setTimeout(maybeOfferCuration, 1000);   // guided walkthrough gate on spawn (published worlds)
     }).catch(() => {});
   } catch (e) {
     _building = false;
     document.getElementById('bHint').textContent = 'could not open “' + rec.name + '”: ' + e.message;
   }
 }
+
+// Guided curation walkthrough — offered on spawn for a PUBLISHED world that has artifacts.
+// (Skipped while authoring/building; the visitor can Begin or "Explore freely".)
+function maybeOfferCuration() {
+  try {
+    if (buildMode || !WORLD_SLUG || !world || !nav || !hope) return;
+    if (!tour) tour = new CurationTour({ world, nav, hope });
+    tour.offerIntro();
+  } catch (e) { console.warn('[curation] offer failed:', e.message); }
+}
+window.startTour = () => { try { if (!tour) tour = new CurationTour({ world, nav, hope }); if (tour.build()) { tour.begin(); } } catch (e) { console.warn(e); } };
 
 // Re-run the world's saved agent scripts (animations, custom effects) on load,
 // and re-register them so a re-save keeps them.

@@ -1817,7 +1817,7 @@ function enterWorld() {
   document.getElementById('camBtn').classList.add('show');
   refreshCamBtn();
   document.getElementById('gridBar').classList.add('show');
-  document.getElementById('objList').classList.add('show');   // object list available in play + create
+  document.getElementById('objList').classList.add('show', 'collapsed');   // available in play + create; default collapsed to just the OBJECTS bar — click header to expand
   document.getElementById('ai').style.display = 'flex';
   document.getElementById('modeToggle').style.opacity = '1';
   els.hud.textContent = 'You are in the world — click any object to select it · hand, keyboard, or ask the AI to move you';

@@ -535,7 +535,7 @@ video.h{display:none}
       <div class="mg-opt" data-mode="gallery">
         <div class="mg-ico">🖼</div>
         <div class="mg-name">GALLERY</div>
-        <div class="mg-desc">View &amp; wander. A clean, immersive walk-through — just you, the space, and an "ask the world" chat.</div>
+        <div class="mg-desc">View &amp; wander. Choose a <b>guided curation tour</b> — artifacts come to you with their stories — or <b>free roam</b> the space yourself.</div>
       </div>
       <div class="mg-opt" data-mode="game">
         <div class="mg-ico">🛠</div>
@@ -1922,6 +1922,9 @@ function showModeGate() {
 }
 document.getElementById('modeGate').addEventListener('click', e => {
   const opt = e.target.closest('.mg-opt'); if (!opt) return;
+  // Gallery → offer Free-roam vs Guided tour (the merged curation intro). If it takes over,
+  // it closes the gate + applies gallery itself; otherwise fall through to plain gallery.
+  if (opt.dataset.mode === 'gallery' && offerCurationGate()) return;
   applyMode(opt.dataset.mode);
   document.getElementById('modeGate').classList.remove('show');
 });
@@ -2143,7 +2146,6 @@ async function openSavedWorld(rec) {
       settle();
       setTimeout(settle, 200);
       setTimeout(settle, 700);
-      setTimeout(maybeOfferCuration, 1000);   // guided walkthrough gate on spawn (published worlds)
     }).catch(() => {});
   } catch (e) {
     _building = false;
@@ -2151,16 +2153,22 @@ async function openSavedWorld(rec) {
   }
 }
 
-// Guided curation walkthrough — offered on spawn for a PUBLISHED world that has artifacts.
-// (Skipped while authoring/building; the visitor can Begin or "Explore freely".)
-function maybeOfferCuration() {
+// Curation lives UNDER Gallery mode: picking 🖼 GALLERY offers Free-roam vs Guided tour.
+// Returns true if it took over the gate (showed the merged "Lost & Reconstructed" intro,
+// which has Begin-guided-tour / Free-roam-instead). Returns false → plain gallery free-roam.
+function offerCurationGate() {
   try {
-    if (buildMode || !WORLD_SLUG || !world || !nav || !hope) return;
-    if (!tour) tour = new CurationTour({ world, nav, hope });
+    if (buildMode || !WORLD_SLUG || !world || !nav || !hope) return false;
+    if (!tour) { tour = new CurationTour({ world, nav, hope }); window.__curtour = tour; }
+    if (!tour.build()) return false;                         // no artifacts → just free-roam gallery
+    const closeGate = () => { document.getElementById('modeGate').classList.remove('show'); applyMode('gallery'); };
+    tour.onBegin = closeGate;                                // guided tour → gallery + walkthrough
+    tour.onSkip = closeGate;                                 // free roam → gallery, no tour
     tour.offerIntro();
-  } catch (e) { console.warn('[curation] offer failed:', e.message); }
+    return true;
+  } catch (e) { console.warn('[curation] gate failed:', e.message); return false; }
 }
-window.startTour = () => { try { if (!tour) tour = new CurationTour({ world, nav, hope }); if (tour.build()) { tour.begin(); } } catch (e) { console.warn(e); } };
+window.startTour = () => { try { if (!tour) tour = new CurationTour({ world, nav, hope }); if (tour.build()) { applyMode('gallery'); tour.begin(); } } catch (e) { console.warn(e); } };
 
 // Re-run the world's saved agent scripts (animations, custom effects) on load,
 // and re-register them so a re-save keeps them.

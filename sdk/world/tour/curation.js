@@ -86,6 +86,8 @@ function dirFromAngles(yaw, pitch) {
 export class CurationTour {
   constructor({ world, nav, hope, THREE: T }) {
     this.world = world; this.nav = nav; this.hope = hope;
+    this.onBegin = null;            // host hook: apply Gallery mode + close the chooser
+    this.onSkip = null;             // host hook: Gallery free-roam (no tour)
     this.active = false;            // true while the tour drives the look
     this.state = 'idle';            // idle | pan | present | stop | returning
     this.stops = [];
@@ -107,7 +109,9 @@ export class CurationTour {
   // ── PUBLIC: lifecycle ─────────────────────────────────────────
   /** Build the tour from the live world's artifacts (imported models) + intro/outro. */
   build() {
-    const arts = (this.world.assets || []).filter(a => a.mesh && a.ptype === 'import');
+    // Real artifacts = imported GLB models with a source URL. EXCLUDE procedural AI objects
+    // (graffiti / paint / AI sketches are also adopted as ptype 'import' but source 'ai').
+    const arts = (this.world.assets || []).filter(a => a.mesh && a.ptype === 'import' && a.source !== 'ai' && a.url);
     const stops = arts.map(a => {
       const c = CURATOR.find(c => c.match.test(a.label || '')) || {};
       return { asset: a, label: a.label,
@@ -127,6 +131,7 @@ export class CurationTour {
 
   /** Begin the walkthrough from the intro gate. */
   begin() {
+    if (this.onBegin) { try { this.onBegin(); } catch {} }   // host applies Gallery mode + closes the chooser
     this._hide(this.el.intro);
     this.active = true; this.paused = false;
     this._restorePlayerEuler();
@@ -228,7 +233,7 @@ export class CurationTour {
     const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
     const longest = Math.max(size.x, size.y, size.z) || 1;
     const f = clamp(0.95 / longest, 0.2, 6);
-    const toScale = home.scale.clone().multiplyScalar(f);
+    const toScale = m.scale.clone().multiplyScalar(f);   // mesh is at its home transform when present begins
     // face the viewer (turn its front toward the eye)
     const lookM = new THREE.Matrix4().lookAt(targetCenter, eye, new THREE.Vector3(0, 1, 0));
     const toQuat = new THREE.Quaternion().setFromRotationMatrix(lookM);
@@ -385,10 +390,10 @@ export class CurationTour {
       <h1 class="cur-h">${INTRO.title}</h1>
       <div class="cur-lede">${INTRO.lede}</div>
       ${INTRO.paras.map(p => `<p class="cur-b">${p}</p>`).join('')}
-      <div class="cur-cta"><button class="cur-btn" id="curBegin">Begin walkthrough →</button>
-        <button class="cur-btn ghost" id="curSkip">Explore freely</button></div></div>`;
+      <div class="cur-cta"><button class="cur-btn" id="curBegin">▶ Begin guided tour</button>
+        <button class="cur-btn ghost" id="curSkip">Free roam instead</button></div></div>`;
     this.el.intro.querySelector('#curBegin').onclick = () => this.begin();
-    this.el.intro.querySelector('#curSkip').onclick = () => this.exitToFreeRoam(true);
+    this.el.intro.querySelector('#curSkip').onclick = () => { if (this.onSkip) { try { this.onSkip(); } catch {} } this.exitToFreeRoam(true); };
     this._show(this.el.intro);
   }
   _showCard(stop) {

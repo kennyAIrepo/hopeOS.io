@@ -1829,6 +1829,7 @@ function enterWorld() {
   setAgentMode(BUILD_MODE ? 'build' : 'converse', BUILD_MODE);  // /build → build agent (announced on entry)
 
   running = true;
+  window.world = world; window.nav = nav; window.hope = hope;   // debug handles (read-only inspection)
   hope.start();
 
   // Experience chooser: every fresh entry asks Gallery vs Game. Entering straight into

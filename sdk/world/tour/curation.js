@@ -255,8 +255,9 @@ export class CurationTour {
     const longest = Math.max(size.x, size.y, size.z) || 1;
     const f = clamp(0.95 / longest, 0.2, 6);
     const toScale = m.scale.clone().multiplyScalar(f);   // mesh is at its home transform when present begins
-    // face the viewer (turn its front toward the eye)
-    const lookM = new THREE.Matrix4().lookAt(targetCenter, eye, new THREE.Vector3(0, 1, 0));
+    // Turn the model's FRONT (+Z) toward the viewer. lookAt(eye→target) makes -Z point from
+    // the viewer to the object, i.e. +Z faces the viewer — so the face (not the back) reads.
+    const lookM = new THREE.Matrix4().lookAt(eye, targetCenter, new THREE.Vector3(0, 1, 0));
     const toQuat = new THREE.Quaternion().setFromRotationMatrix(lookM);
     // position origin so the object's CENTER lands at targetCenter (account for origin→center offset)
     const center0 = this._center(m);

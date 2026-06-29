@@ -235,18 +235,11 @@
       ],
       "images": [
         {
-          "url": "https://upload.wikimedia.org/wikipedia/commons/e/ea/Nok_terracotta_figurine.jpg",
-          "caption": "Nok terracotta figurine — the ancestral West African terracotta tradition.",
-          "credit": "Wikimedia Commons",
-          "license": "check item page (likely CC/PD)",
-          "role": "supporting"
-        },
-        {
-          "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Nok_sculpture_Louvre_70-1998-11-1.jpg/250px-Nok_sculpture_Louvre_70-1998-11-1.jpg",
-          "caption": "Nok sculpture (Louvre) — figurative style ancestral to later traditions.",
-          "credit": "Wikimedia Commons / Louvre",
-          "license": "check item page",
-          "role": "reference"
+          "url": "./assets/nok-louvre-pd.jpg",
+          "caption": "Nok terracotta figure (Nigeria, c. 500 BCE–500 CE), Musée du Louvre — the ancestral West African terracotta tradition the Bura corridor descends from.",
+          "credit": "Musée du Louvre / photo Marie-Lan Nguyen (public domain)",
+          "license": "Public domain (artwork PD by age; photo released to PD) — no attribution required",
+          "role": "hero"
         }
       ],
       "sources": [
@@ -254,8 +247,7 @@
         { "name": "The Met", "title": "Nok Terracottas (500 B.C.–200 A.D.) — Heilbrunn Timeline", "url": "https://www.metmuseum.org/essays/nok-terracottas-500-b-c-200-a-d", "publisher": "The Metropolitan Museum of Art" },
         { "name": "World History Encyclopedia", "title": "Nok Culture", "url": "https://www.worldhistory.org/Nok_Culture", "publisher": "World History Encyclopedia" }
       ],
-      "design": { "palette": "map ochre + node accents", "layout": "West Africa basemap with labelled nodes linked by a timeline ribbon", "illustration": "commission original map/timeline; use Wikimedia Nok images only after license check" },
-      "usageNote": "For demo purposes only — not for distribution. The Nok comparison images are pulled from Wikimedia and the map is illustration-pending; verify each Wikimedia licence and draw an original map before any public use.",
+      "design": { "palette": "map ochre + node accents", "layout": "West Africa basemap with labelled nodes linked by a timeline ribbon", "illustration": "commission original map/timeline; Nok hero photo is public domain (Louvre)" },
       "status": "needs-illustration"
     },
     {

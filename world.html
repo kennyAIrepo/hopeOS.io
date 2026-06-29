@@ -1147,7 +1147,9 @@ function _worldFrame(dt, frame) {
   const intent = nav.update(dt, frame);
 
   // 1b. Curation tour: when active, it projects the look onto the curated rail (bounded gaze).
-  if (tour && tour.active) tour.steer(intent, dt);
+  //     Gate on gallery experience-mode too, so the rail can NEVER hold navigation hostage
+  //     once the user is in game mode (otherwise WASD/look stay frozen).
+  if (tour && tour.active && expMode === 'gallery') tour.steer(intent, dt);
 
   // 2. Drive the avatar through the world (physics, collision, gravity)
   world.step(dt, intent);
@@ -1890,6 +1892,13 @@ function initUIChrome() { buildHub(); injectHides(); }
 function applyMode(mode) {
   expMode = mode;
   const gallery = mode === 'gallery';
+  // Leaving the gallery → DROP the curation rails. The guided tour's steer() pins the
+  // look and zeros forward/strafe every frame while active, so if it leaks past a mode
+  // switch the avatar can't walk or roam in game mode. Exiting also clears the intro
+  // fly-in ease + any curation overlay, so game/free-roam always gets full nav control.
+  if (!gallery && tour && (tour.active || tour._introEase || (tour.el && tour.el.intro && tour.el.intro.classList.contains('show')))) {
+    tour.exitToFreeRoam(true);
+  }
   // Clear/stamp ui-hidden on all authoring panels. createBar is INCLUDED so game mode
   // removes its ui-hidden — its real visibility is then driven by the build toggle's
   // inline display (otherwise ui-hidden's !important would keep it stuck hidden).

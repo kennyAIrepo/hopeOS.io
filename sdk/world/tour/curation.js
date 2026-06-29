@@ -187,6 +187,10 @@ export class CurationTour {
   exitToFreeRoam(silent) {
     this._allHome();
     this.active = false; this.state = 'idle'; this._tw = null; this._present = null; this._introEase = null;
+    // Hand the look back to the navigator from EXACTLY where the tour left it — the tour
+    // drove world.yaw/pitch directly, so without this the next nav frame would snap the
+    // view back to the navigator's stale pre-tour orientation.
+    if (this.nav) { this.nav.yaw = this.world.yaw; this.nav.pitch = this.world.pitch; this.nav.keys = {}; }
     this.el.bar.classList.remove('show');
     this._hide(this.el.card); this._hide(this.el.ret); this._hide(this.el.intro);
     if (!silent) this._showEnd();

@@ -2092,6 +2092,10 @@ async function restoreObjects(objs) {
   const placed = [];
   for (const o of (objs || [])) {
     let id;
+    // An import with neither a hostable URL nor stored bytes can't be rebuilt — skip it
+    // rather than fabricating a phantom box. (Runtime-generated props such as the gallery
+    // exhibit placards are re-created by a world boot-hook, never from the snapshot.)
+    if (o.kind === 'import' && !o.url && !(o.blob instanceof Blob)) continue;
     if (o.kind === 'import' && (o.url || o.blob instanceof Blob)) {
       // Prefer stored bytes (uploaded local GLB) — its old blob: URL is dead after reload.
       const src = o.blob instanceof Blob ? URL.createObjectURL(o.blob) : o.url;

@@ -889,6 +889,13 @@ export class WorldTemplate {
     if (a.body) { this.world.removeRigidBody(a.body); a.body = null; }
     const m = a.mesh;
 
+    // AI-generated decorations (graffiti, posters, signs, placards, painted decals — all
+    // source 'ai') are SURFACE ART, not architecture. They must NOT get an avatar-blocking
+    // collider: a roomful of them (e.g. the aabcart_2_2 gallery) unions into an invisible
+    // solid "zone" you can't walk into or cross. They keep their hand colliders (registered
+    // separately) so they're still selectable/grabbable — you just walk right past them.
+    if (a.source === 'ai') return;
+
     if (a.ptype === 'import') {
       // axis-aligned box collider sized to the model's current world bounds (cheap + scale-safe)
       m.updateWorldMatrix(true, true);

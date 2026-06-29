@@ -190,6 +190,19 @@ export class ObjectEditor {
     return n;
   }
 
+  /** Uniformly scale the whole current selection by a factor (all dimensions together).
+   *  >1 grows, <1 shrinks; e.g. 1.5 = +50%, 0.5 = half. Skips locked objects. */
+  scaleSelection(factor) {
+    const f = Number(factor);
+    if (!isFinite(f) || f <= 0) { this.onSay('enter a scale factor like 1.5 or 0.5'); return 0; }
+    const targets = this.selected.filter(a => !this.world.isLocked(a.id));
+    if (!targets.length) { this.onSay('select an object first, then scale'); return 0; }
+    targets.forEach(a => this.world.scaleObject(a.id, f));
+    this._updateHelpers();
+    this.onSay(`scaled ${targets.length} object${targets.length > 1 ? 's' : ''} ×${f}`);
+    return targets.length;
+  }
+
   _toggle(asset) {
     const i = this.selected.indexOf(asset);
     const next = i >= 0 ? this.selected.filter(a => a !== asset) : [...this.selected, asset];

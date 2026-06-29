@@ -41,7 +41,6 @@ video.h{display:none}
   background:rgba(0,0,0,.5);padding:6px 16px;border-radius:6px;backdrop-filter:blur(6px);
   color:#9bf;text-align:center;pointer-events:none;opacity:0;transition:opacity .4s}
 #hud.show{opacity:1}
-#hud.flexhud{color:#39ff5a;border:1px solid rgba(57,255,90,.4);text-shadow:0 0 8px rgba(57,255,90,.5);letter-spacing:.5px}
 #legend{position:fixed;bottom:14px;left:14px;z-index:20;font-size:10px;line-height:1.7;color:#7fe6a8;
   font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;letter-spacing:.02em;
   background:rgba(2,7,5,.55);padding:10px 14px;border-radius:8px;backdrop-filter:blur(6px);
@@ -289,6 +288,13 @@ video.h{display:none}
 <!-- Selection action toolbar (appears when something is selected) -->
 <div id="selBar">
   <span class="l" id="selLbl">selected</span>
+  <span class="selscale" title="Scale the whole selection uniformly (all dimensions together)">
+    <span class="ssl">⤢ scale</span>
+    <button class="sschip" data-s="0.5" title="half size">½×</button>
+    <input id="selScaleIn" type="number" min="0.05" max="50" step="0.1" value="1.5" title="type a factor — e.g. 2 = double, 0.5 = half">
+    <button id="selScaleApply" title="multiply the selection's size by this factor">apply</button>
+    <button class="sschip" data-s="2" title="double size">2×</button>
+  </span>
   <button data-a="dup">⧉ Duplicate</button>
   <button class="danger" data-a="del">🗑 Delete</button>
   <button data-a="clr">✕ Deselect</button>
@@ -397,6 +403,14 @@ video.h{display:none}
 #selBar button:hover{background:rgba(73,231,134,.2);color:#5dff9b;border-color:#5dff9b}
 #selBar button.danger{border-color:rgba(220,90,90,.4);color:#f99}
 #selBar button.danger:hover{background:rgba(220,90,90,.18);color:#fbb}
+/* Uniform scale group: type a factor (or ½× / 2×) to resize the whole selection */
+.selscale{display:flex;align-items:center;gap:4px;padding:0 4px;border-left:1px solid rgba(73,231,134,.22);border-right:1px solid rgba(73,231,134,.22)}
+.selscale .ssl{color:#7dffb0;font-size:11px;letter-spacing:.3px}
+.selscale .sschip{padding:5px 7px !important;font-size:11px}
+#selScaleIn{width:52px;background:rgba(2,7,5,.7);border:1px solid rgba(73,231,134,.35);color:#eafff1;border-radius:6px;
+  padding:5px 6px;font-family:inherit;font-size:12px;outline:none;text-align:center}
+#selScaleIn:focus{border-color:#5dff9b}
+#selScaleApply{font-weight:600;color:#5dff9b !important;border-color:rgba(93,255,155,.5) !important}
 
 /* Runtime chat "subtitle" log — a slim 2-3 line strip at the very bottom that never
    blocks the scene. The last AI line stays pinned; scroll up inside it for history. */
@@ -521,7 +535,7 @@ video.h{display:none}
       <div class="mg-opt" data-mode="gallery">
         <div class="mg-ico">🖼</div>
         <div class="mg-name">GALLERY</div>
-        <div class="mg-desc">View &amp; wander. A clean, immersive walk-through — just you, the space, and an "ask the world" chat.</div>
+        <div class="mg-desc">View &amp; wander. Choose a <b>guided curation tour</b> — artifacts come to you with their stories — or <b>free roam</b> the space yourself.</div>
       </div>
       <div class="mg-opt" data-mode="game">
         <div class="mg-ico">🛠</div>
@@ -689,6 +703,7 @@ import { AssetManipulator } from '/sdk/world/asset-grab.js';
 import { ObjectEditor } from '/sdk/world/editor.js';
 import { SpatialGrid } from '/sdk/world/grid3d.js';
 import { SurfaceTracer } from '/sdk/world/surface-trace.js';
+import { CurationTour } from '/sdk/world/tour/curation.js';
 import { VoiceCommander } from '/sdk/interaction/voice.js';
 import { isPinch } from '/sdk/interaction/grab.js';
 import { searchModels, resolveGLB } from '/sdk/world/sketchfab.js';
@@ -738,7 +753,7 @@ document.getElementById('modeOpts').addEventListener('click', e => {
   o.classList.add('sel'); chosenMode = o.dataset.mode;
 });
 
-let hope, world, nav, embody, agent, voice, manip, editor, grid, tracer, running = false;
+let hope, world, nav, embody, agent, voice, manip, editor, grid, tracer, tour, running = false;
 let traceOn = false, paintOn = false, eraseOn = false, sketchOn = false, _drawMode = 'paint', spawnPickOn = false;
 let gridShown = false, jumpMode = false, gridMode = 'off', camOn = false;   // grid hidden + camera OFF by default (privacy); user opens camera via CAM
 
@@ -1131,8 +1146,16 @@ function _worldFrame(dt, frame) {
   // 1. Navigation intent (keyboard or gesture)
   const intent = nav.update(dt, frame);
 
+  // 1b. Curation tour: when active, it projects the look onto the curated rail (bounded gaze).
+  //     Gate on gallery experience-mode too, so the rail can NEVER hold navigation hostage
+  //     once the user is in game mode (otherwise WASD/look stay frozen).
+  if (tour && tour.active && expMode === 'gallery') tour.steer(intent, dt);
+
   // 2. Drive the avatar through the world (physics, collision, gravity)
   world.step(dt, intent);
+
+  // 2c. Curation tour: advance the camera/present tweens + wander-off detection.
+  if (tour) tour.update(dt);
 
   // 2b. Zoom POV (two-hand pinch or mouse wheel) → camera FOV
   if (intent.zoom) {
@@ -1230,8 +1253,15 @@ function wireEditorTools() {
     if (b.dataset.a === 'dup') editor.duplicateSelection();
     else if (b.dataset.a === 'del') editor.deleteSelection();
     else if (b.dataset.a === 'clr') editor.clearSelection();
+    else if (b.id === 'selScaleApply') editor.scaleSelection(parseFloat(document.getElementById('selScaleIn').value));
+    else if (b.dataset.s) editor.scaleSelection(parseFloat(b.dataset.s));   // ½× / 2× quick chips
     refreshObjList();
   });
+  // Enter in the scale box applies it; don't let the global keys (Del etc.) fire while typing.
+  const ssIn = document.getElementById('selScaleIn');
+  if (ssIn) {
+    ssIn.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { editor.scaleSelection(parseFloat(ssIn.value)); refreshObjList(); } });
+  }
   // Object list collapse toggle
   document.getElementById('objHead').addEventListener('click', () => document.getElementById('objList').classList.toggle('collapsed'));
   // Group-select actions: select every object / clear the whole group.
@@ -1765,6 +1795,7 @@ function setLegend() {
     `🎯 <b>JUMP</b> (top-right): click to leap · <b>▦</b> grid toggle for placement<br>` +
     `⬛ Top-left <b>PLAY ⇄ CREATE</b> · 🗣️ AI bar (call objects by name)` +
     `</div>`;
+  els.legend.classList.add('collapsed');   // default collapsed — click the ⌨ CONTROLS header to expand
   document.getElementById('legendHead').addEventListener('click', () => els.legend.classList.toggle('collapsed'));
 }
 
@@ -1786,7 +1817,7 @@ function enterWorld() {
   document.getElementById('camBtn').classList.add('show');
   refreshCamBtn();
   document.getElementById('gridBar').classList.add('show');
-  document.getElementById('objList').classList.add('show');   // object list available in play + create
+  document.getElementById('objList').classList.add('show', 'collapsed');   // available in play + create; default collapsed to just the OBJECTS bar — click header to expand
   document.getElementById('ai').style.display = 'flex';
   document.getElementById('modeToggle').style.opacity = '1';
   els.hud.textContent = 'You are in the world — click any object to select it · hand, keyboard, or ask the AI to move you';
@@ -1800,40 +1831,14 @@ function enterWorld() {
   setAgentMode(BUILD_MODE ? 'build' : 'converse', BUILD_MODE);  // /build → build agent (announced on entry)
 
   running = true;
+  window.world = world; window.nav = nav; window.hope = hope;   // debug handles (read-only inspection)
   hope.start();
 
   // Experience chooser: every fresh entry asks Gallery vs Game. Entering straight into
   // build (lobby "Create" / /build) skips the gate and goes full editor (mode switch still shown).
   initUIChrome();
-  if (FLEX_MODE) {
-    // ⚗ FLEX lab: blank full-access sandbox — straight into build with the build agent,
-    // the whole stack exposed as window.FLEX, grid on for orientation.
-    setBuildMode(true);
-    setAgentMode('build', false);
-    applyMode('game');
-    if (grid) grid.setVisible(true);
-    exposeFlex();
-    els.hud.textContent = '⚗ FLEX LAB — full-access sandbox · everything is window.FLEX (run FLEX.help())';
-    els.hud.classList.add('flexhud');
-  } else if (BUILD_MODE || ENTRY_MODE === 'create') applyMode('game');
+  if (BUILD_MODE || ENTRY_MODE === 'create') applyMode('game');
   else showModeGate();
-}
-
-// Expose the ENTIRE live stack + SDK classes for unconstrained scripting (DEI console,
-// the build agent's run_script, or our own component modules). No guardrails in the lab.
-function exposeFlex() {
-  window.FLEX = {
-    hope, world, nav, embody, agent, voice, manip, editor, grid, tracer,
-    THREE: hope.THREE, scene: hope.scene, camera: hope.camera, renderer: hope.renderer,
-    rapier: (world && world.world) || null, worldTemplate: world,
-    sdk: { HopeOS, WorldTemplate, AvatarNavigator, EmbodimentManager, WorldAgent,
-           AssetManipulator, ObjectEditor, SpatialGrid, SurfaceTracer, VoiceCommander,
-           searchModels, resolveGLB, createBrowser, BuilderAgent, WorldStore },
-    help() { const k = Object.keys(this).filter(x => x !== 'help');
-      console.log('%c⚗ window.FLEX', 'color:#39ff5a;font-weight:bold', k);
-      console.log('   sdk classes:', Object.keys(this.sdk)); return k; },
-  };
-  console.log('%c⚗ FLEX lab ready — full stack exposed as window.FLEX (run FLEX.help())', 'color:#39ff5a;font-weight:bold');
 }
 els.play.addEventListener('click', enterWorld);
 
@@ -1887,6 +1892,13 @@ function initUIChrome() { buildHub(); injectHides(); }
 function applyMode(mode) {
   expMode = mode;
   const gallery = mode === 'gallery';
+  // Leaving the gallery → DROP the curation rails. The guided tour's steer() pins the
+  // look and zeros forward/strafe every frame while active, so if it leaks past a mode
+  // switch the avatar can't walk or roam in game mode. Exiting also clears the intro
+  // fly-in ease + any curation overlay, so game/free-roam always gets full nav control.
+  if (!gallery && tour && (tour.active || tour._introEase || (tour.el && tour.el.intro && tour.el.intro.classList.contains('show')))) {
+    tour.exitToFreeRoam(true);
+  }
   // Clear/stamp ui-hidden on all authoring panels. createBar is INCLUDED so game mode
   // removes its ui-hidden — its real visibility is then driven by the build toggle's
   // inline display (otherwise ui-hidden's !important would keep it stuck hidden).
@@ -1921,8 +1933,12 @@ function showModeGate() {
 }
 document.getElementById('modeGate').addEventListener('click', e => {
   const opt = e.target.closest('.mg-opt'); if (!opt) return;
+  const gate = document.getElementById('modeGate');
+  // Gallery → fly into the merged curation intro (Free-roam vs Guided tour). Hide the chooser
+  // so the two panels never coexist; the curation intro's buttons apply gallery + start/skip.
+  if (opt.dataset.mode === 'gallery' && offerCurationGate()) { gate.classList.remove('show'); return; }
   applyMode(opt.dataset.mode);
-  document.getElementById('modeGate').classList.remove('show');
+  gate.classList.remove('show');
 });
 document.getElementById('modeSwitch').addEventListener('click', () => applyMode(expMode === 'gallery' ? 'game' : 'gallery'));
 document.getElementById('uiHubBtn').addEventListener('click', () => document.getElementById('uiHubMenu').classList.toggle('open'));
@@ -1988,9 +2004,6 @@ const PATH = location.pathname.replace(/\/+$/, '');
 // A published world opens at /world/<name> (served via the Vercel rewrite → world.html).
 const WORLD_SLUG = decodeURIComponent((PATH.match(/\/world\/([^/?#]+)/) || [])[1] || '');
 const BUILD_MODE = PARAMS.get('build') === '1' || ENTRY_MODE === 'build' || PATH === '/build';
-// ⚗ FLEX lab — hidden full-access sandbox (not in the menu). Blank buildable space,
-// straight into build, the whole stack exposed as window.FLEX. URL: /flex (or /flex/<name>).
-const FLEX_MODE = PATH === '/flex' || PATH.startsWith('/flex/');
 
 // ═══════════════ BUILD YOUR OWN WORLD ═══════════════
 // Black-screen chat → browse Sketchfab scenes or upload a GLB → that scene becomes
@@ -2151,6 +2164,23 @@ async function openSavedWorld(rec) {
     document.getElementById('bHint').textContent = 'could not open “' + rec.name + '”: ' + e.message;
   }
 }
+
+// Curation lives UNDER Gallery mode: picking 🖼 GALLERY offers Free-roam vs Guided tour.
+// Returns true if it took over the gate (showed the merged "Lost & Reconstructed" intro,
+// which has Begin-guided-tour / Free-roam-instead). Returns false → plain gallery free-roam.
+function offerCurationGate() {
+  try {
+    if (buildMode || !WORLD_SLUG || !world || !nav || !hope) return false;
+    if (!tour) { tour = new CurationTour({ world, nav, hope }); window.__curtour = tour; }
+    if (!tour.build()) return false;                         // no artifacts → just free-roam gallery
+    const closeGate = () => { document.getElementById('modeGate').classList.remove('show'); applyMode('gallery'); };
+    tour.onBegin = closeGate;                                // guided tour → gallery + walkthrough
+    tour.onSkip = closeGate;                                 // free roam → gallery, no tour
+    tour.offerIntro();
+    return true;
+  } catch (e) { console.warn('[curation] gate failed:', e.message); return false; }
+}
+window.startTour = () => { try { if (!tour) tour = new CurationTour({ world, nav, hope }); if (tour.build()) { applyMode('gallery'); tour.begin(); } } catch (e) { console.warn(e); } };
 
 // Re-run the world's saved agent scripts (animations, custom effects) on load,
 // and re-register them so a re-save keeps them.
@@ -2621,16 +2651,8 @@ async function openDraftByName(name) {
   } catch (e) { console.error(e); els.play.textContent = 'ERROR: ' + e.message; startBuilder(); }
 }
 
-// ⚗ FLEX — boot a BLANK world (no GLB; invisible floor) and auto-enter the lab.
-async function startFlex() {
-  activeWorldConfig = { modelUrl: null, label: 'flex lab', spawnXZ: { x: 0, z: 0 } };
-  try { await boot(); enterWorld(); }
-  catch (e) { console.error(e); dbg('X flex boot failed: ' + e.message); els.play.textContent = 'ERROR: ' + e.message; }
-}
-
-dbg('route: slug=' + JSON.stringify(WORLD_SLUG) + ' draft=' + JSON.stringify(DRAFT_NAME) + ' build=' + BUILD_MODE + ' flex=' + FLEX_MODE + ' path=' + PATH);
+dbg('route: slug=' + JSON.stringify(WORLD_SLUG) + ' draft=' + JSON.stringify(DRAFT_NAME) + ' build=' + BUILD_MODE + ' path=' + PATH);
 if (WORLD_SLUG) loadPublishedWorld(WORLD_SLUG);
-else if (FLEX_MODE) startFlex();
 else if (DRAFT_NAME) openDraftByName(DRAFT_NAME);
 else if (BUILD_MODE) startBuilder();
 else boot().catch(e => { console.error(e); dbg('X boot failed: ' + e.message); els.play.textContent = 'ERROR: ' + e.message; });

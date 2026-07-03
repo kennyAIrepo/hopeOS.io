@@ -4,13 +4,14 @@
  * A museum/restoration tour layered over a live hopeOS world (Meroë-inspired, but
  * embodied — you stay a character inside the film). It rides the existing engine:
  *   • LOOK is driven via the absolute `intent.yaw/pitch` the template already consumes.
- *   • "Art flies to you" tweens the artifact mesh to a reading pose in front of the eyes,
- *     then returns it home — the world's saved coordinates never change.
+ *   • TROLLEY CAM: the viewer is dollied to a good viewing spot in FRONT of each artifact
+ *     and parked at an optimal viewing distance for its size. The piece is NEVER moved and
+ *     NEVER scaled — it stays exactly at its saved home; framing comes purely from distance.
  *
  * The locked design (see meroe-patterns/CURATION-MODE.md):
- *   intro gate → per-stop: pan to face → artifact flies to you → curator card →
- *   bounded head/eye look with elastic recenter → wander-off "return to tour" →
- *   end → "explore freely" hand-off to normal play.
+ *   intro gate → per-stop: trolley the viewer to face the piece at a read distance →
+ *   curator card → bounded head/eye look with elastic recenter → wander-off "return to
+ *   tour" → end → "explore freely" hand-off to normal play.
  *
  * Wiring (3 touch-points in world.html):
  *   const tour = new CurationTour({ world, nav, hope, THREE });
@@ -101,7 +102,8 @@ export class CurationTour {
     this.lookHome = { yaw: world.yaw || 0, pitch: 0 };
     this._tw = null;                // active tween {a,b,t,ms,onDone,kind}
     this._introEase = null;         // gentle camera glide while the intro gate fades in
-    this._present = null;           // active fly-in tween
+    this._present = null;           // legacy guard (the piece is never scaled/moved now)
+    this._trolley = null;           // active viewer dolly {startPos,viewPos,a,b,t,ms,onDone}
     this._homes = new Map();        // assetId → {pos,quat,scale} so a piece always returns home
     this._anchor = null;            // viewer body pos at the current stop (for return-to-tour)
     this._injectCSS(); this._buildDOM();
@@ -119,6 +121,12 @@ export class CurationTour {
         kicker: c.kicker || 'Artifact', title: c.title || (a.label || 'Untitled'),
         body: c.body || 'A piece in this collection.' };
     });
+    // Curated running order: Bura ceramics first, then the Met relief, then anything else.
+    const rank = s => { const t = ((s.title || '') + ' ' + (s.label || '')).toLowerCase();
+      if (/bura|ceramic|clay|meshy|cracked|terracotta fragment/.test(t)) return 0;
+      if (/met|relief|hades|persephone|votive/.test(t)) return 1;
+      return 2; };
+    stops.sort((a, b) => rank(a) - rank(b));
     this.stops = stops;
     return stops.length;
   }
@@ -163,21 +171,36 @@ export class CurationTour {
   goto(i) {
     if (i < 0) i = 0;
     if (i >= this.stops.length) { this._finish(); return; }
-    if (this.i >= 0 && this.stops[this.i]) this._sendHome(this.stops[this.i].asset);   // current piece returns home
+    if (this.i >= 0 && this.stops[this.i]) this._sendHome(this.stops[this.i].asset);   // current piece returns to size
     this.i = i;
     this._renderDots();
     this._hide(this.el.card);
     const stop = this.stops[i];
-    // anchor + pan to face the artifact's HOME, then fly it to the viewer
-    this._anchor = this.world.getAvatarPosition().clone();
-    const eye = this._eye();
-    const homeCenter = this._center(stop.asset.mesh);
-    this.lookHome = lookAnglesTo(eye, homeCenter);
+    const m = stop.asset.mesh;
+    // ── work out a good VIEWING SPOT in front of the piece (it never moves) ──
+    const cur = this.world.getAvatarPosition().clone();
+    const eyeH = this.world.cfg.eyeHeight || 1.5;
+    const center = this._center(m);
+    const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
+    const longest = Math.max(size.x, size.y, size.z) || 1;
+    // the piece's FRONT is its +Z world axis; stand on it.
+    const front = new THREE.Vector3(); m.getWorldDirection(front); front.y = 0;
+    if (front.lengthSq() < 1e-5) front.set(0, 0, 1);
+    front.normalize();
+    // The piece is NEVER scaled — it stays at its true saved size. "Optimal viewing size"
+    // comes purely from where we park the viewer: distance grows with the piece so it
+    // subtends a comfortable visual angle, whether it's a small ceramic or a wall relief.
+    const dist = clamp(longest * 2.2, 1.1, 5.0);
+    const stand = center.clone().add(front.multiplyScalar(dist));
+    const viewPos = new THREE.Vector3(stand.x, cur.y, stand.z);   // keep the current floor height
+    // face the piece from the viewing spot (level-ish, looking at its center)
+    const eyeTarget = new THREE.Vector3(viewPos.x, cur.y + eyeH, viewPos.z);
+    this.lookHome = lookAnglesTo(eyeTarget, center);
+    this._anchor = viewPos.clone();                 // return-to-tour brings us back to this spot
     this.devYaw = this.devPitch = 0; this._offT = 0;
-    this._beginTween('pan', { yaw: this.world.yaw, pitch: this.world.pitch }, this.lookHome, 1100, () => {
-      this._beginPresent(stop);
-    });
-    this.state = 'pan';
+    // trolley the viewer over to the read distance, then hand to bounded look + show the card
+    this.state = 'dolly';
+    this._beginTrolley(viewPos, this.lookHome, 1600, () => this._arrive(stop));
   }
   next() { if (this.active) this.goto(this.i + 1); }
   prev() { if (this.active) this.goto(this.i - 1); }
@@ -186,7 +209,7 @@ export class CurationTour {
   /** Drop the rails: hand control back to normal play. */
   exitToFreeRoam(silent) {
     this._allHome();
-    this.active = false; this.state = 'idle'; this._tw = null; this._present = null; this._introEase = null;
+    this.active = false; this.state = 'idle'; this._tw = null; this._present = null; this._trolley = null; this._introEase = null;
     // Hand the look back to the navigator from EXACTLY where the tour left it — the tour
     // drove world.yaw/pitch directly, so without this the next nav frame would snap the
     // view back to the navigator's stale pre-tour orientation.
@@ -226,8 +249,8 @@ export class CurationTour {
   update(dt) {
     if (this._introEase) this._stepIntroEase(dt);   // runs while the intro gate is up (tour not yet active)
     if (!this.active) return;
+    if (this._trolley && !this.paused) this._stepTrolley(dt);
     if (this._tw && !this.paused) this._stepTween(dt);
-    if (this._present && !this.paused) this._stepPresent(dt);
     if (this.state === 'stop' && !this.paused) this._detectRunaway(dt);
   }
 
@@ -246,42 +269,35 @@ export class CurationTour {
     if (tw.t >= tw.ms) { this.world.yaw = shortAngle(tw.b.yaw); this.world.pitch = tw.b.pitch; this._tw = null; tw.onDone && tw.onDone(); }
   }
 
-  _beginPresent(stop) {
-    this.state = 'present';
-    const m = stop.asset.mesh;
-    if (!this._homes.has(stop.asset.id)) this._homes.set(stop.asset.id, { pos: m.position.clone(), quat: m.quaternion.clone(), scale: m.scale.clone() });
-    const eye = this._eye();
-    const fwd = dirFromAngles(this.lookHome.yaw, -0.06);            // read pose, slightly below eye line
-    const reach = 1.55;
-    const targetCenter = eye.clone().add(fwd.multiplyScalar(reach));
-    // scale so the longest dimension reads ~0.95 m
-    const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
-    const longest = Math.max(size.x, size.y, size.z) || 1;
-    const f = clamp(0.95 / longest, 0.2, 6);
-    const toScale = m.scale.clone().multiplyScalar(f);   // mesh is at its home transform when present begins
-    // Turn the model's FRONT (+Z) toward the viewer. lookAt(eye→target) makes -Z point from
-    // the viewer to the object, i.e. +Z faces the viewer — so the face (not the back) reads.
-    const lookM = new THREE.Matrix4().lookAt(eye, targetCenter, new THREE.Vector3(0, 1, 0));
-    const toQuat = new THREE.Quaternion().setFromRotationMatrix(lookM);
-    // position origin so the object's CENTER lands at targetCenter (account for origin→center offset)
-    const center0 = this._center(m);
-    const offset = center0.clone().sub(m.position);
-    const toPos = targetCenter.clone().sub(offset.multiplyScalar(f));
-    this._present = { asset: stop.asset, t: 0, ms: 1700,
-      fromPos: m.position.clone(), toPos, fromQuat: m.quaternion.clone(), toQuat,
-      fromScale: m.scale.clone(), toScale };
-    // lock lookHome to the read pose; card appears as it settles
-    this.lookHome = lookAnglesTo(eye, targetCenter);
-    setTimeout(() => { if (this.state === 'present' || this.state === 'stop') this._showCard(stop); }, 650);
+  // Dolly the viewer along the floor to a viewing spot while panning the look to face the
+  // piece. Runs in update() (AFTER world.step, BEFORE the camera is applied) so the teleport
+  // wins the frame and physics/gravity never fights the move.
+  _beginTrolley(viewPos, look, ms, onDone) {
+    const startPos = this.world.getAvatarPosition().clone();
+    const a = { yaw: this.world.yaw, pitch: this.world.pitch };
+    const b = { yaw: a.yaw + shortAngle(look.yaw - a.yaw), pitch: look.pitch };   // shortest yaw path
+    this._trolley = { startPos, viewPos: viewPos.clone(), a, b, t: 0, ms, onDone };
   }
-  _stepPresent(dt) {
-    const p = this._present; p.t += dt * 1000;
-    const k = easeInOut(clamp(p.t / p.ms, 0, 1));
-    const m = p.asset.mesh;
-    m.position.lerpVectors(p.fromPos, p.toPos, k);
-    m.quaternion.slerpQuaternions(p.fromQuat, p.toQuat, k);
-    m.scale.lerpVectors(p.fromScale, p.toScale, k);
-    if (p.t >= p.ms) { this.state = 'stop'; this._idle = 0; this._present = null; }   // hand to bounded look
+  _stepTrolley(dt) {
+    const tr = this._trolley; tr.t += dt * 1000;
+    const k = easeInOut(clamp(tr.t / tr.ms, 0, 1));
+    const px = tr.startPos.x + (tr.viewPos.x - tr.startPos.x) * k;
+    const pz = tr.startPos.z + (tr.viewPos.z - tr.startPos.z) * k;
+    this.world.teleportTo(px, tr.viewPos.y, pz);                       // dolly the body
+    this.world.yaw = tr.a.yaw + (tr.b.yaw - tr.a.yaw) * k;             // pan to face the piece
+    this.world.pitch = tr.a.pitch + (tr.b.pitch - tr.a.pitch) * k;
+    if (tr.t >= tr.ms) {
+      this.world.teleportTo(tr.viewPos.x, tr.viewPos.y, tr.viewPos.z);
+      this.world.yaw = shortAngle(tr.b.yaw); this.world.pitch = tr.b.pitch;
+      this._trolley = null; tr.onDone && tr.onDone();
+    }
+  }
+
+  // Arrived at the read distance. The piece is shown at its TRUE size (never scaled/moved) —
+  // hand straight to the bounded head/eye look and raise the curator card.
+  _arrive(stop) {
+    this.state = 'stop'; this._idle = 0;
+    this._showCard(stop);
   }
   /** Snap a presented artifact back to its saved home transform (the world never changes). */
   _sendHome(asset) {

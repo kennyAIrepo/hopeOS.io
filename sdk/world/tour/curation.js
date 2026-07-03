@@ -187,6 +187,13 @@ export class CurationTour {
     const front = new THREE.Vector3(); m.getWorldDirection(front); front.y = 0;
     if (front.lengthSq() < 1e-5) front.set(0, 0, 1);
     front.normalize();
+    // Stand on the ROOM-INTERIOR side. A wall-mounted piece (e.g. the Met relief) can have its
+    // model +Z facing INTO the wall — standing on that side would trolley the viewer through the
+    // wall and out of the gallery, behind the piece. The viewer is always currently somewhere
+    // inside the room, so if the front axis points away from them, flip its sign: we keep the
+    // same straight-on axis but approach from inside, facing the piece's front.
+    const toViewer = cur.clone().sub(center); toViewer.y = 0;
+    if (toViewer.lengthSq() > 1e-4 && front.dot(toViewer.normalize()) < 0) front.negate();
     // The piece is NEVER scaled — it stays at its true saved size. "Optimal viewing size"
     // comes purely from where we park the viewer: distance grows with the piece so it
     // subtends a comfortable visual angle, whether it's a small ceramic or a wall relief.

@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>hopeOS Arcade — local test (real holohands)</title>
+<!--
+  Standalone test rig for the Games SDK (sdk/world/games/*). It boots the REAL
+  hopeOS engine (HopeOS.init: webcam + MediaPipe hand tracking + holo-hand meshes +
+  EmbodimentManager), exactly like world.html, but against a tiny flat "world" mock
+  instead of a 23 MB gallery + physics avatar. So you test the actual gesture/
+  hand-tracking path the games run on — not a stand-in.
+
+    1. Run a static server rooted at the repo:  python -m http.server   (or  npx serve .)
+    2. Open  /sdk/world/games/test/arcade.html
+    3. Click  📷 Camera  → ALLOW webcam access → your holo hands appear.
+    4. Pick a game; SLICE the notes/fruit with your hands. Keyboard works too.
+
+  No camera? It still plays: your MOUSE becomes a blade-cursor, and keyboard parity
+  (rhythm A S D F G · slice arrow keys) slices without any tracking.
+-->
+<style>
+  html,body{margin:0;height:100%;background:#04070a;overflow:hidden;font-family:'Space Grotesk',system-ui,sans-serif;color:#d7ecdd}
+  #c{position:fixed;inset:0;display:block}
+  #vid,#bg{position:fixed;width:2px;height:2px;opacity:0;pointer-events:none;left:-10px;top:-10px}
+  #panel{position:fixed;top:16px;left:16px;z-index:80;background:rgba(6,14,10,.74);border:1px solid rgba(73,231,134,.3);
+    border-radius:14px;padding:15px 17px;backdrop-filter:blur(8px);max-width:312px}
+  #panel h1{font-size:15px;margin:0 0 4px;color:#eafff1}
+  #panel p{font-size:12px;line-height:1.5;color:#9fe6bd;margin:0 0 11px}
+  .row{display:flex;gap:8px;margin-bottom:9px}
+  .row button{flex:1;cursor:pointer;border:none;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13px;font-weight:700}
+  .play{background:linear-gradient(135deg,#3ddc74,#21b85f);color:#02110a}
+  .play:hover{filter:brightness(1.08)}
+  #camBtn{background:rgba(12,30,22,.85);border:1px solid rgba(73,231,134,.45);color:#bdf5d4;width:100%;cursor:pointer;
+    border-radius:10px;padding:11px;font-family:inherit;font-size:13px;font-weight:700;margin-bottom:9px}
+  #camBtn.on{background:linear-gradient(135deg,#3ddc74,#21b85f);color:#02110a;border-color:transparent}
+  .hint{font-size:11px;color:#7fcfa0;line-height:1.55;border-top:1px solid rgba(73,231,134,.15);padding-top:9px}
+  kbd{background:rgba(73,231,134,.14);border:1px solid rgba(73,231,134,.3);border-radius:4px;padding:0 5px;font-size:10px}
+  #status{font-size:11px;color:#ffd84a;margin-top:7px;min-height:14px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<video id="vid" playsinline muted></video>
+<video id="bg" playsinline muted></video>
+
+<div id="panel">
+  <h1>🎮 hopeOS Arcade — test rig</h1>
+  <p>The real engine + your camera-tracked holo hands, on a flat test world.</p>
+  <button id="camBtn">📷 Camera — off (click to allow)</button>
+  <div class="row">
+    <button class="play" data-type="rhythm">🎵 Rhythm</button>
+    <button class="play" data-type="slice">🍉 Slice</button>
+  </div>
+  <div class="hint">
+    <b>Hands</b> (camera on) = your blades — swipe through notes/fruit.<br>
+    <b>No camera?</b> Mouse = a blade-cursor · keyboard parity:
+    rhythm <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>G</kbd> · slice <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd>.<br>
+    Hold <b>right-mouse</b> to look around. Audio starts on first click.
+    <div id="status"></div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { HopeOS } from '../../../hopeos.js';
+import { EmbodimentManager } from '../../embodiment.js';
+import { GamesHub } from '../index.js';
+
+const status = (m) => { document.getElementById('status').textContent = m || ''; };
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const EYE_Y = 1.5;
+
+// ── boot the REAL engine (same call world.html makes) ──
+const hope = await HopeOS.init({
+  canvas: document.getElementById('c'),
+  bgVideo: document.getElementById('bg'),
+  detectionVideo: document.getElementById('vid'),
+  worldMode: true,
+  voice: false,                 // no mic — only the camera matters here
+});
+hope.externalHandControl = true; // we drive the holo hands ourselves (first-person remap)
+
+// world mode skips lights — give the test world a floor + glow so it isn't a void
+hope.scene.background = new THREE.Color(0x05080c);
+hope.scene.fog = new THREE.Fog(0x05080c, 10, 30);
+hope.scene.add(new THREE.HemisphereLight(0x8fffc0, 0x06140d, 1.0));
+const dir = new THREE.DirectionalLight(0xffffff, 0.55); dir.position.set(3, 6, 4); hope.scene.add(dir);
+hope.scene.add(new THREE.GridHelper(40, 40, 0x39ff5a, 0x0c3a22));
+for (const x of [-5, 5]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.6, 4, 0.6),
+  new THREE.MeshStandardMaterial({ color: 0x0a1f15, emissive: 0x123a26, emissiveIntensity: 0.4 }));
+  p.position.set(x, 2, -6); hope.scene.add(p); }
+
+// ── the WORLD mock: only the surface EmbodimentManager + GameSession actually read ──
+const world = {
+  scene: hope.scene, cfg: { eyeHeight: EYE_Y }, yaw: 0, pitch: 0,
+  playerBody: { translation: () => ({ x: 0, y: 0, z: 0 }) },
+  getAvatarPosition: () => new THREE.Vector3(0, 0, 0),     // fresh vector each call (eye() mutates .y)
+  applyToCamera(cam) { cam.position.set(0, EYE_Y, 0); cam.quaternion.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ')); },
+  step(dt, intent) {   // absolute yaw/pitch (from games.steer) wins; else integrate look deltas
+    this.yaw   = intent.yaw   != null ? intent.yaw   : this.yaw + (intent.yawDelta || 0);
+    this.pitch = clamp(intent.pitch != null ? intent.pitch : this.pitch + (intent.pitchDelta || 0), -1.4, 1.4);
+  },
+};
+const nav = { yaw: 0, pitch: 0, keys: {} };
+const embody = new EmbodimentManager({ mode: 'firstPerson' });
+
+const games = new GamesHub({ world, nav, hope, THREE,
+  onBegin: () => { document.getElementById('panel').style.opacity = 0.35; },
+  onExit:  () => { document.getElementById('panel').style.opacity = 1; },
+});
+
+// ── a mouse blade-cursor: the fallback "hand" when the camera is off ──
+const cursor = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12),
+  new THREE.MeshBasicMaterial({ color: 0x39ff5a })); cursor.visible = false; hope.scene.add(cursor);
+const HAND = Array.from({ length: 21 }, () => new THREE.Vector3());
+let mouseNDC = new THREE.Vector2(0, 0), bladeTip = new THREE.Vector3(0, EYE_Y, -1);
+function mouseBladeHand() {
+  const ndc = new THREE.Vector3(mouseNDC.x, mouseNDC.y, 0.5).unproject(hope.camera);
+  const d = ndc.sub(hope.camera.position).normalize();
+  bladeTip = hope.camera.position.clone().addScaledVector(d, 1.0);
+  // index/middle tips (8,12) at the cursor; rest nearby so the shape is valid
+  for (let i = 0; i < 21; i++) HAND[i].copy(bladeTip).addScaledVector(new THREE.Vector3((i % 3 - 1) * 0.02, (Math.floor(i / 3) - 3) * 0.02, 0), 1);
+  HAND[8].copy(bladeTip); HAND[12].copy(bladeTip);
+  return HAND;
+}
+
+// ── input: right-drag = look · plain mouse = blade-cursor when camera off ──
+let looking = false, lastLook = null, lookDX = 0, lookDY = 0;
+addEventListener('mousemove', (e) => {
+  mouseNDC.x = (e.clientX / innerWidth) * 2 - 1; mouseNDC.y = -(e.clientY / innerHeight) * 2 + 1;
+  if (looking && lastLook) { lookDX -= (e.clientX - lastLook.x) * 0.004; lookDY -= (e.clientY - lastLook.y) * 0.004; lastLook = { x: e.clientX, y: e.clientY }; }
+});
+addEventListener('mousedown', (e) => { if (e.button === 2) { looking = true; lastLook = { x: e.clientX, y: e.clientY }; } });
+addEventListener('mouseup',   (e) => { if (e.button === 2) { looking = false; lastLook = null; } });
+addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ── camera toggle (THIS asks the browser for webcam access) ──
+const camBtn = document.getElementById('camBtn');
+camBtn.onclick = async () => {
+  camBtn.disabled = true; status('starting camera…');
+  const on = await hope.toggleTracking();
+  camBtn.disabled = false;
+  camBtn.classList.toggle('on', on);
+  camBtn.textContent = on ? '📷 Camera — on (tracking)' : '📷 Camera — off (click to allow)';
+  status(on ? 'hands tracking — raise your hands into view' : 'camera off — using mouse + keyboard');
+};
+
+// ── frame loop: mirrors world.html's _worldFrame touch-points ──
+hope.onFrame((dt, frame) => {
+  // 1. look intent (mouse-drag deltas) → game bounded-gaze, or free look when idle
+  const intent = { yawDelta: lookDX, pitchDelta: lookDY, yaw: null, pitch: null };
+  lookDX = lookDY = 0;
+  if (games.active) games.steer(intent, dt);
+  world.step(dt, intent);
+  embody.updateCamera(world, hope.camera);
+
+  // 2. resolve hands → drive the visible holo hands, then the game blades
+  let { right, left } = embody.resolveHands(frame, world, hope.camera);
+  if (hope.trackingEnabled) {
+    if (right && hope.hands.right) { hope.hands.right.deform(right); hope.hands.right.grp.visible = true; }
+    else if (hope.hands.right) hope.hands.right.grp.visible = false;
+    if (left && hope.hands.left) { hope.hands.left.deform(left); hope.hands.left.grp.visible = true; }
+    else if (hope.hands.left) hope.hands.left.grp.visible = false;
+    cursor.visible = false;
+  } else {
+    if (hope.hands.right) hope.hands.right.grp.visible = false;
+    if (hope.hands.left) hope.hands.left.grp.visible = false;
+    right = mouseBladeHand(); left = null;       // mouse = blade
+    cursor.position.copy(bladeTip); cursor.visible = games.active;
+  }
+
+  // 3. hand the game this frame's blade(s) — exactly as world.html does
+  if (games.active) games.update(dt, { right, left });
+});
+// hope renders after callbacks; keep the camera in sync with the window
+addEventListener('resize', () => { hope.camera.aspect = innerWidth / innerHeight; hope.camera.updateProjectionMatrix(); hope.renderer.setSize(innerWidth, innerHeight); });
+hope.camera.aspect = innerWidth / innerHeight; hope.camera.updateProjectionMatrix(); hope.renderer.setSize(innerWidth, innerHeight);
+hope.start();
+status('ready — pick a game (camera optional)');
+
+document.querySelectorAll('.play').forEach(b => b.onclick = () => games.start(b.dataset.type, { duration: 50 }));
+window._arcade = { hope, games, world, embody };
+</script>
+</body>
+</html>

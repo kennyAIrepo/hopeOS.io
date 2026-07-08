@@ -236,6 +236,50 @@ video.h{display:none}
 #coordBox b{color:#39ff5a;letter-spacing:1px}
 </style>
 
+<style>
+/* ─────────────────────────────────────────────────────────────
+   Responsive UI hardening. Every bar is position:fixed with hardcoded
+   px offsets, so a narrower CSS viewport (browser zoom to 125%+, small
+   laptops, mobile) used to make the top-right cluster, the centred tool
+   bar and the side panels collide and bury the scene. One --ui-scale
+   knob shrinks every bar proportionally toward its own anchor: `zoom`
+   scales a fixed element's SIZE *and* its offsets, so clusters pack
+   tighter into their corner instead of overrunning the centre.
+   ───────────────────────────────────────────────────────────── */
+:root{ --ui-scale:1; }
+@media (max-width:1400px){ :root{ --ui-scale:.92 } }
+@media (max-width:1200px){ :root{ --ui-scale:.84 } }
+@media (max-width:1000px){ :root{ --ui-scale:.74 } }
+@media (max-width:820px) { :root{ --ui-scale:.66 } }
+@media (max-width:640px) { :root{ --ui-scale:.58 } }
+#hud,#legend,#debug,#camBtn,#jumpBtn,#pubBtn,#saveBtn,#exitBtn,#gridBar,#coordBox,
+#modeToggle,#createBar,#objList,#selBar,#bugBtn,#sfPanel,#aiLog,#flash,#ai,#aiAttach,
+#uiHub,#modeSwitch,#aiReveal,#deiPanel,#frameBtn{ zoom:var(--ui-scale); }
+/* wide horizontal bars wrap instead of running off-screen on small viewports */
+#gridBar,#selBar{ flex-wrap:wrap; max-width:96vw; justify-content:center; }
+
+/* ── Auto-frame: keep the 3D scene the dominant, unobstructed display ── */
+#frameBtn{position:fixed;bottom:52px;right:14px;z-index:40;width:34px;height:30px;display:flex;
+  align-items:center;justify-content:center;background:rgba(7,16,12,.7);border:1px solid rgba(73,231,134,.4);
+  border-radius:8px;color:#9fe6bd;font-size:15px;line-height:1;cursor:pointer;backdrop-filter:blur(6px);
+  font-family:'Space Grotesk',system-ui,sans-serif}
+#frameBtn:hover{background:rgba(73,231,134,.18);color:#02110a}
+body.scene-framed #frameBtn{background:rgba(57,180,120,.55);color:#dfffe9;border-color:rgba(80,220,150,.6)}
+/* Manual frame: hide all overlay chrome (EXIT + this button stay reachable). */
+body.scene-framed :is(#hud,#legend,#debug,#gridBar,#coordBox,#createBar,#objList,#selBar,#bugBtn,
+  #ai,#aiReveal,#aiAttach,#aiLog,#modeToggle,#modeSwitch,#uiHub,#camBtn,#jumpBtn,#pubBtn,#saveBtn,#flash){
+  display:none !important}
+
+/* ── Dismissible / auto-fading hint notes ── */
+.hint,.ohint{transition:opacity .45s ease,max-height .45s ease}
+.hint.hint-dismiss,.ohint.hint-dismiss{cursor:pointer}
+.hint.hint-gone,.ohint.hint-gone{opacity:0;max-height:0!important;margin:0!important;padding:0!important;
+  overflow:hidden;pointer-events:none}
+</style>
+
+<!-- Auto-frame: one tap hides all panels for a clean scene view (tap again to restore) -->
+<button id="frameBtn" title="Frame the scene — hide all panels for a clean, unobstructed view (tap again to restore)">⛶</button>
+
 <!-- Live mode toggle (no reload — switch create⇄play any time) -->
 <button id="modeToggle" style="position:fixed;top:14px;left:14px;z-index:25;padding:7px 14px;
   background:rgba(30,40,60,.6);border:1px solid rgba(80,140,220,.4);border-radius:8px;color:#9bf;
@@ -462,6 +506,37 @@ video.h{display:none}
   display:none;gap:6px;align-items:center;background:rgba(8,10,16,.72);padding:6px 8px;border-radius:10px;
   backdrop-filter:blur(8px);border:1px solid rgba(73,231,134,.35)"></div>
 
+<!-- ── Spatial touch joystick ───────────────────────────────────────────────────
+     A separate control that sits beside the ask-the-world bar. Drag the inner core
+     to walk: up = forward, sideways = strafe. One-finger drag on the open scene
+     turns/looks; double-tap teleports. Pointer-driven, so it works with touch,
+     pen, and mouse alike. Concise futuristic ring, white lines. -->
+<style>
+  #joyStick{position:fixed;bottom:14px;left:18px;z-index:30;display:none;
+    width:118px;height:118px;touch-action:none;-webkit-user-select:none;user-select:none;
+    -webkit-tap-highlight-color:transparent;font-family:'Space Grotesk',system-ui,sans-serif}
+  #joyRing{position:absolute;inset:0;border-radius:50%;
+    border:1.5px solid rgba(255,255,255,.72);
+    background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.05),rgba(10,14,20,.34) 68%);
+    box-shadow:0 0 18px rgba(255,255,255,.14),inset 0 0 22px rgba(255,255,255,.05);
+    backdrop-filter:blur(3px)}
+  /* faint axis ticks — a spatial, HUD feel without clutter */
+  #joyRing::before,#joyRing::after{content:'';position:absolute;background:rgba(255,255,255,.16)}
+  #joyRing::before{left:50%;top:9px;bottom:9px;width:1px;transform:translateX(-.5px)}
+  #joyRing::after{top:50%;left:9px;right:9px;height:1px;transform:translateY(-.5px)}
+  #joyCore{position:absolute;left:50%;top:50%;width:46px;height:46px;border-radius:50%;
+    transform:translate(-50%,-50%);pointer-events:none;
+    border:1.5px solid rgba(255,255,255,.95);
+    background:radial-gradient(circle at 38% 34%,rgba(255,255,255,.9),rgba(255,255,255,.32) 60%,rgba(255,255,255,.12));
+    box-shadow:0 0 14px rgba(255,255,255,.55),inset 0 0 8px rgba(255,255,255,.4);
+    transition:transform .12s ease-out}
+  #joyStick.drag #joyCore{transition:none}
+  #joyStick.drag #joyRing{border-color:rgba(255,255,255,.95);box-shadow:0 0 26px rgba(255,255,255,.3),inset 0 0 22px rgba(255,255,255,.08)}
+</style>
+<div id="joyStick" title="drag to move — up walks forward, sideways strafes · drag the scene to look · double-tap to teleport">
+  <div id="joyRing"><div id="joyCore"></div></div>
+</div>
+
 <!-- Transient action signals (selected / locked / …) beside the OBJECTS panel. -->
 <div id="flash"></div>
 
@@ -541,6 +616,11 @@ video.h{display:none}
         <div class="mg-ico">🛠</div>
         <div class="mg-name">GAME ENGINE</div>
         <div class="mg-desc">The full creative suite — build, edit, script, paint &amp; publish. Every panel at your fingertips.</div>
+      </div>
+      <div class="mg-opt" data-mode="arcade">
+        <div class="mg-ico">🎮</div>
+        <div class="mg-name">ARCADE</div>
+        <div class="mg-desc">Play <b>in</b> the space. A hand-tracked <b>rhythm run</b> — slice neon notes in time, no controller, just your hands.</div>
       </div>
     </div>
   </div>
@@ -704,6 +784,7 @@ import { ObjectEditor } from '/sdk/world/editor.js';
 import { SpatialGrid } from '/sdk/world/grid3d.js';
 import { SurfaceTracer } from '/sdk/world/surface-trace.js';
 import { CurationTour } from '/sdk/world/tour/curation.js';
+import { GamesHub } from '/sdk/world/games/index.js';
 import { VoiceCommander } from '/sdk/interaction/voice.js';
 import { isPinch } from '/sdk/interaction/grab.js';
 import { searchModels, resolveGLB } from '/sdk/world/sketchfab.js';
@@ -753,7 +834,7 @@ document.getElementById('modeOpts').addEventListener('click', e => {
   o.classList.add('sel'); chosenMode = o.dataset.mode;
 });
 
-let hope, world, nav, embody, agent, voice, manip, editor, grid, tracer, tour, running = false;
+let hope, world, nav, embody, agent, voice, manip, editor, grid, tracer, tour, games, running = false;
 let traceOn = false, paintOn = false, eraseOn = false, sketchOn = false, _drawMode = 'paint', spawnPickOn = false;
 let gridShown = false, jumpMode = false, gridMode = 'off', camOn = false;   // grid hidden + camera OFF by default (privacy); user opens camera via CAM
 
@@ -915,6 +996,16 @@ async function boot() {
     env: { scene: hope.scene, camera: hope.camera, THREE: hope.THREE, hope },  // for run_script live edits
     allowScripting: true,
   });
+  // Arcade — drop-in games layer (L5), same wiring shape as the curation tour.
+  // onBegin: strip authoring chrome for a clean playfield + free the editor's click.
+  // onExit:  restore the experience mode the player came from.
+  games = new GamesHub({
+    world, nav, hope, THREE: hope.THREE,
+    onBegin: () => { enterGameplayUI(); if (editor) editor.setEnabled(false); },
+    onExit: () => { applyMode(expMode === 'gallery' ? 'gallery' : 'game'); if (typeof refreshEditor === 'function') refreshEditor(); },
+  });
+  agent.games = games;   // let the WorldAgent start/configure games by conversation
+
   voice = new VoiceCommander(CFG.OPENAI_API_KEY, {
     model: CFG.WHISPER_MODEL,
     onTranscript: (t) => { if (t && t.trim()) { sayAI(t, 'you'); agent.command(t); } },
@@ -949,6 +1040,7 @@ async function boot() {
 
   // Click-to-jump navigation (real physics: no surface under you → you fall).
   wireJump();
+  wireJoystick();          // on-screen touch joystick (walk) — pairs with drag-to-look + double-tap teleport
 
   wireAIBar();
   wireEditorTools();
@@ -1151,6 +1243,9 @@ function _worldFrame(dt, frame) {
   //     once the user is in game mode (otherwise WASD/look stay frozen).
   if (tour && tour.active && expMode === 'gallery') tour.steer(intent, dt);
 
+  // 1c. Arcade game: plant the player + project the bounded look onto the playfield.
+  if (games && games.active) games.steer(intent, dt);
+
   // 2. Drive the avatar through the world (physics, collision, gravity)
   world.step(dt, intent);
 
@@ -1178,6 +1273,9 @@ function _worldFrame(dt, frame) {
   if (left && hope.hands.left) { hope.hands.left.deform(left); hope.hands.left.grp.visible = true; }
   else if (hope.hands.left) hope.hands.left.grp.visible = false;
 
+  // 4a2. Arcade game: the resolved scene-space hands ARE the slice blades.
+  if (games && games.active) games.update(dt, { right, left });
+
   // 4b. Bare-hand grab/move/scale of objects (basketball-style), in BOTH modes —
   //     but it yields while a gizmo handle or marquee is being dragged so the two
   //     manipulation layers never fight over the same object.
@@ -1198,6 +1296,9 @@ function _worldFrame(dt, frame) {
 
   // 5. HUD
   updateHUD(frame);
+
+  // 6. Keep the touch joystick shown only during free-roam (not behind the gate/tour/arcade).
+  syncJoy();
 }
 
 // ── Keyboard manipulation of the object you're looking at ──
@@ -1721,6 +1822,76 @@ function wireJump() {
     const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y); down = null;
     if (moved < 6) doJump(e);                                 // a click, not a drag-look
   });
+  // Double-click / double-tap anywhere to teleport there — the standard free-roam
+  // navigation of game sites, no JUMP toggle needed. Reuses the same raycast-and-stand
+  // as JUMP. Suppressed while a build tool owns the click, in CREATE/authoring mode,
+  // or during a guided tour.
+  canvas.addEventListener('dblclick', e => {
+    if (e.button !== 0) return;
+    if (!canDblTeleport()) return;
+    doJump(e);
+  });
+
+  // (Touch double-tap → teleport is intentionally deferred to a later ship; only the
+  //  desktop dblclick above is wired for now. Touch navigation = joystick + drag-to-look.)
+}
+
+// Shared gate for double-click / double-tap teleport (free-roam only).
+function canDblTeleport() {
+  if (buildMode || jumpMode || paintOn || sketchOn || eraseOn || spawnPickOn || gridMode !== 'off') return false;
+  if (tour && tour.active) return false;
+  return true;
+}
+
+// ── Spatial touch joystick → walk (up = forward, sideways = strafe) ──────────────
+// Pointer-driven (touch / pen / mouse), so it drives the same nav axes as WASD. The
+// core follows your thumb within the ring; on release it snaps back to centre and
+// movement stops. Feeds nav.setJoystick(); nav merges it with every other input.
+function wireJoystick() {
+  const stick = document.getElementById('joyStick');
+  const core = document.getElementById('joyCore');
+  if (!stick || !core) return;
+  const R = 40;                       // max core travel (px) from centre → full deflection
+  const DEAD = 0.16;                  // ignore tiny wobble around centre
+  let active = null;                  // pointerId currently steering
+  const center = () => { const r = stick.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+
+  const move = (clientX, clientY) => {
+    const c = center();
+    let dx = clientX - c.x, dy = clientY - c.y;
+    const len = Math.hypot(dx, dy);
+    if (len > R) { dx *= R / len; dy *= R / len; }        // clamp to the ring
+    core.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    let nx = dx / R, ny = dy / R;                          // -1..1 screen axes
+    if (Math.hypot(nx, ny) < DEAD) { nx = 0; ny = 0; }
+    nav.setJoystick(nx, -ny);                             // up (−screenY) = walk forward
+  };
+  const release = () => {
+    active = null; stick.classList.remove('drag');
+    core.style.transform = 'translate(-50%,-50%)';
+    nav.setJoystick(0, 0);
+  };
+
+  stick.addEventListener('pointerdown', e => {
+    active = e.pointerId; stick.classList.add('drag');
+    try { stick.setPointerCapture(e.pointerId); } catch {}
+    move(e.clientX, e.clientY); e.preventDefault();
+  });
+  stick.addEventListener('pointermove', e => { if (e.pointerId === active) { move(e.clientX, e.clientY); e.preventDefault(); } });
+  stick.addEventListener('pointerup', e => { if (e.pointerId === active) release(); });
+  stick.addEventListener('pointercancel', e => { if (e.pointerId === active) release(); });
+  stick.addEventListener('lostpointercapture', e => { if (e.pointerId === active) release(); });
+}
+
+// Joystick is a free-roam control: visible while you're in the world, hidden behind
+// the mode chooser, during a guided curation tour, and inside an arcade game (those
+// drive movement themselves). Change-guarded so it doesn't thrash layout each frame.
+let _joyShown = null;
+function syncJoy() {
+  const el = document.getElementById('joyStick'); if (!el) return;
+  const gateUp = document.getElementById('modeGate').classList.contains('show');
+  const on = !!running && !gateUp && !(tour && tour.active) && !(games && games.active);
+  if (on !== _joyShown) { _joyShown = on; el.style.display = on ? 'flex' : 'none'; }
 }
 
 function doJump(e) {
@@ -1789,7 +1960,7 @@ function setLegend() {
   els.legend.innerHTML =
     `<div id="legendHead"><b>⌨ CONTROLS</b> <span class="c">▾</span></div>` +
     `<div id="legendBody">` +
-    `⌨️ <b>WASD</b> move · <b>Q/E</b> turn · <b>↑↓</b> look · <b>scroll</b> zoom · drag to look<br>` +
+    `⌨️ <b>WASD</b> move · <b>Q/E</b> turn · <b>↑↓</b> look · <b>scroll</b> zoom · drag / two-finger trackpad to look · <b>double-click</b> to teleport<br>` +
     `✋ Raise a hand (idle): lean turn · point walk · grab to move (two hands resize)<br>` +
     `🖱️ <b>CREATE</b>: click select · gizmo / box-select · <b>[ ]</b> scale · <b>, .</b> rotate · <b>Del</b><br>` +
     `🎯 <b>JUMP</b> (top-right): click to leap · <b>▦</b> grid toggle for placement<br>` +
@@ -1888,7 +2059,48 @@ function injectHides() {
     el.appendChild(b);
   });
 }
-function initUIChrome() { buildHub(); injectHides(); }
+function initUIChrome() { buildHub(); injectHides(); setupResponsiveUI(); }
+
+// Responsive / scene-first behaviour (pairs with the --ui-scale CSS above).
+//   • Manual auto-frame: ⛶ hides all chrome for a clean scene, tap to restore.
+//   • Auto scene-first: on narrow/zoomed viewports, tuck non-essential bars into
+//     the 👁 UI hub so they can't crowd the scene (still one tap away in the hub).
+//   • Transient #hud tips auto-fade after a few seconds so nothing lingers.
+//   • Instructional hints are dismissible and remembered (no re-nagging returns).
+function setupResponsiveUI() {
+  const frameBtn = document.getElementById('frameBtn');
+  if (frameBtn) frameBtn.addEventListener('click', () => document.body.classList.toggle('scene-framed'));
+
+  const NONESSENTIAL = ['legend', 'hud', 'bugBtn'];
+  let wasCompact = null;
+  const applyCompact = () => {
+    if (expMode === 'gallery') return;                 // gallery already strips these
+    const compact = window.innerWidth < 760;
+    if (compact === wasCompact) return; wasCompact = compact;
+    NONESSENTIAL.forEach(id => setPanel(id, !compact));
+  };
+  applyCompact();
+  window.addEventListener('resize', applyCompact);
+
+  const hud = document.getElementById('hud');
+  if (hud) {
+    let t; const fade = () => { if (!hud.classList.contains('show')) return;
+      clearTimeout(t); t = setTimeout(() => hud.classList.remove('show'), 6000); };
+    new MutationObserver(fade).observe(hud, { childList: true, characterData: true, subtree: true,
+      attributes: true, attributeFilter: ['class'] });
+  }
+
+  const SEEN = 'hopeHintsSeen';
+  const hints = Array.from(document.querySelectorAll('.hint, .ohint'));
+  if (localStorage.getItem(SEEN)) { hints.forEach(h => h.classList.add('hint-gone')); }
+  else hints.forEach(h => {
+    h.classList.add('hint-dismiss'); h.title = 'click to dismiss';
+    h.addEventListener('click', () => {
+      hints.forEach(x => x.classList.add('hint-gone'));
+      try { localStorage.setItem(SEEN, '1'); } catch {}
+    });
+  });
+}
 function applyMode(mode) {
   expMode = mode;
   const gallery = mode === 'gallery';
@@ -1937,9 +2149,47 @@ document.getElementById('modeGate').addEventListener('click', e => {
   // Gallery → fly into the merged curation intro (Free-roam vs Guided tour). Hide the chooser
   // so the two panels never coexist; the curation intro's buttons apply gallery + start/skip.
   if (opt.dataset.mode === 'gallery' && offerCurationGate()) { gate.classList.remove('show'); return; }
+  // Arcade → pick a game from the hub registry, then hand off to its "how to play" gate.
+  if (opt.dataset.mode === 'arcade') { gate.classList.remove('show'); window.openArcadePicker(); return; }
   applyMode(opt.dataset.mode);
   gate.classList.remove('show');
 });
+
+// Strip authoring chrome for a clean playfield (games hub onBegin hook).
+function enterGameplayUI() {
+  UI_PANELS.forEach(p => setPanel(p.id, false));
+  document.getElementById('selBar').classList.remove('show');
+  document.getElementById('modeSwitch').style.display = 'none';
+  document.getElementById('uiHub').style.display = 'none';
+  document.getElementById('aiReveal').style.display = 'none';
+}
+// Single entry point for manual (chooser) AND agent (start_game tool) launches.
+window.startGame = (type = 'rhythm', spec = {}) => {
+  try { if (!games) return false; return games.start(type, spec); }
+  catch (e) { console.warn('[arcade]', e); return false; }
+};
+// Arcade picker — a neon tile per registered game type (rhythm, slice, …), driven by
+// the hub registry so new games appear here for free. Picks → game's own intro gate.
+window.openArcadePicker = () => {
+  if (!games) return;
+  document.getElementById('arcadePicker')?.remove();
+  const wrap = document.createElement('div'); wrap.id = 'arcadePicker';
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:62;display:flex;align-items:center;justify-content:center;padding:4vmin;font-family:\'Space Grotesk\',system-ui,sans-serif;background:radial-gradient(120% 120% at 50% 40%,rgba(4,9,6,.62),rgba(4,7,10,.88))';
+  const tiles = games.types().map(g => `
+    <button class="ap-tile" data-type="${g.id}" style="pointer-events:auto;cursor:pointer;text-align:left;background:rgba(6,14,10,.7);border:1px solid rgba(73,231,134,.35);border-radius:16px;padding:22px 24px;width:260px;color:#d7ecdd;font-family:inherit;box-shadow:0 0 40px rgba(57,255,90,.1)">
+      <div style="font-size:34px;line-height:1">${g.icon}</div>
+      <div style="font-size:20px;font-weight:700;color:#eafff1;margin:8px 0 4px">${g.label}</div>
+      <div style="font-size:13px;color:#9fe6bd;line-height:1.5">${g.blurb}</div>
+    </button>`).join('');
+  wrap.innerHTML = `<div style="text-align:center;max-width:760px">
+      <div style="font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:#39ff5a;margin-bottom:14px">HOPEOS ARCADE</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center">${tiles}</div>
+      <button id="apBack" style="margin-top:22px;pointer-events:auto;cursor:pointer;background:rgba(12,30,22,.7);border:1px solid rgba(73,231,134,.4);color:#9fe6bd;border-radius:11px;padding:10px 22px;font-family:inherit;font-size:14px">Back</button>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelectorAll('.ap-tile').forEach(t => t.onclick = () => { wrap.remove(); window.startGame(t.dataset.type); });
+  wrap.querySelector('#apBack').onclick = () => { wrap.remove(); document.getElementById('modeGate')?.classList.add('show'); };
+};
 document.getElementById('modeSwitch').addEventListener('click', () => applyMode(expMode === 'gallery' ? 'game' : 'gallery'));
 document.getElementById('uiHubBtn').addEventListener('click', () => document.getElementById('uiHubMenu').classList.toggle('open'));
 document.getElementById('aiReveal').addEventListener('click', () => setPanel('ai', true));
@@ -2005,6 +2255,23 @@ const PATH = location.pathname.replace(/\/+$/, '');
 const WORLD_SLUG = decodeURIComponent((PATH.match(/\/world\/([^/?#]+)/) || [])[1] || '');
 const BUILD_MODE = PARAMS.get('build') === '1' || ENTRY_MODE === 'build' || PATH === '/build';
 
+// ═══════════════ BUILT-IN LOCAL SCENES ═══════════════
+// Addresses that open at /world/<slug> WITHOUT a cloud publish. A panoramic-photo world
+// carries NO base GLB — the template's invisible floor is flat, walkable ground at y=0 —
+// and an equirectangular photo becomes a 360° skybox centred on the origin, so you spawn
+// at (0,0,0) and simply walk around inside the scene.
+//   panorama paths are ABSOLUTE (site root) because /world/<slug> is a rewrite — a relative
+//   './…' would resolve against /world/ and 404.
+const BUILTIN_WORLDS = {
+  stree: {
+    name: 'stree',
+    label: 'stree · rainy neon street (360°)',
+    panorama: '/worlds/stree-pano.jpg',
+    spawnXZ: { x: 0, z: 0 },
+    atmosphere: { exposure: 1.1 },
+  },
+};
+
 // ═══════════════ BUILD YOUR OWN WORLD ═══════════════
 // Black-screen chat → browse Sketchfab scenes or upload a GLB → that scene becomes
 // a live, navigable world (auto-scaled/grounded/spawned) with the full suite, and
@@ -2056,8 +2323,30 @@ function startBuilder() {
     catch (err) { document.getElementById('bHint').textContent = 'could not import that file: ' + err.message; }
   });
 
+  renderPlaces(chat);
   renderLibrary(chat);
   input.focus();
+}
+
+// Featured built-in addresses (BUILTIN_WORLDS) shown on the side of the builder — click a
+// card to walk straight into that scene at its /world/<slug> address.
+function renderPlaces(chat) {
+  const slugs = Object.keys(BUILTIN_WORLDS);
+  if (!slugs.length) return;
+  const lib = document.createElement('div');
+  lib.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:4px';
+  const title = document.createElement('div'); title.className = 'bLibTitle';
+  title.textContent = 'places you can walk into — a fixed address, open to anyone with the link';
+  const row = document.createElement('div'); row.className = 'bLibRow';
+  slugs.forEach(s => {
+    const def = BUILTIN_WORLDS[s];
+    const card = document.createElement('button'); card.className = 'bcard';
+    card.innerHTML = '🌏 ' + (def.label || def.name) + ' <small>/world/' + s + '</small>';
+    card.addEventListener('click', () => { location.href = '/world/' + s; });
+    row.appendChild(card);
+  });
+  lib.appendChild(title); lib.appendChild(row);
+  chat.parentNode.insertBefore(lib, chat);
 }
 
 // Show saved worlds as clickable cards at the top of the builder (click → reopen).
@@ -2101,6 +2390,13 @@ async function restoreObjects(objs) {
       const src = o.blob instanceof Blob ? URL.createObjectURL(o.blob) : o.url;
       try { id = await _withTimeout(world.importGLBFromURL(src, { label: o.label, blob: o.blob instanceof Blob ? o.blob : null }), 20000, o.label || 'asset'); }
       catch (e) { flash('skipped ' + (o.label || 'an asset') + ': ' + e.message); continue; }
+    } else if (o.kind === 'import') {
+      // An import with NEITHER a URL nor bytes can't be reloaded — its source was a
+      // session-only blob: handle that didn't survive publish. Skip it rather than fall
+      // through to addObject('box'), which used to render a default BLUE box where the
+      // poster/model should be (the "blue boxes instead of posters" bug).
+      console.warn('[world] skipping unloadable import "' + (o.label || '?') + '" — no url/bytes');
+      continue;
     } else {
       const color = o.color ? parseInt(o.color.replace('#', ''), 16) : undefined;
       id = world.addObject(o.ptype || 'box', { color, label: o.label });
@@ -2371,6 +2667,10 @@ async function doPublish(name, thumb) {
         dropped.push(o.label || 'a model');   // an import with neither a URL nor bytes can't reload anywhere — surface it
       }
     }
+    // Don't publish imports we couldn't host: with no url/bytes they'd reload as a default
+    // BLUE box where the model/poster should be. Omitting them is honest (a missing poster
+    // beats a broken-looking placeholder); the bytes still live in the local draft to re-host.
+    rec.objects = rec.objects.filter(o => !(o.kind === 'import' && !o.url && !(o.blob instanceof Blob)));
     spStatus && spStatus('publishing world data…');
     const portable = await WorldStore.toPortable(rec);
     // Make every model URL ABSOLUTE so a published world loads from /world/<slug> and
@@ -2668,6 +2968,32 @@ async function loadPublishedWorld(slug) {
   }
 }
 
+// Open a BUILT-IN local scene (see BUILTIN_WORLDS) — no cloud fetch/publish. Boots an
+// empty base (invisible floor → flat walkable ground at y=0), spawns the visitor dead-
+// centre, and wraps them in the equirectangular photo skybox at the origin (0,0,0).
+async function loadBuiltinWorld(def) {
+  if (_building) return; _building = true;
+  els.play.textContent = 'LOADING “' + def.name + '”…';
+  dbg('1 builtin world: ' + def.name);
+  // No base model — the template's invisible floor fallback is the flat ground.
+  activeWorldConfig = { modelUrl: null, autoScale: false, spawnXZ: def.spawnXZ || { x: 0, z: 0 }, label: def.label || def.name };
+  currentWorld = { name: def.name, base: { source: 'builtin', builtin: def.name } };
+  try {
+    await boot();
+    world.setSpawnPoint(0, world.cfg.groundY || 0, 0, { yaw: def.yaw || 0, pitch: 0 });
+    if (def.atmosphere) world.setAtmosphere(def.atmosphere);
+    enterWorld();
+    // Wrap the visitor in the 360° photo, auto-centred & auto-enclosing at the origin.
+    world.addSkybox(def.panorama, { equirect: true })
+      .then(() => flash('welcome to “' + def.name + '” — walk with WASD, look with the mouse or your hand'))
+      .catch(() => flash('panorama image not found — save your picture to' + def.panorama.replace(/^\//, ' /')));
+  } catch (e) {
+    _building = false;
+    dbg('X builtin load failed: ' + e.message);
+    els.play.textContent = 'ERROR: ' + e.message;
+  }
+}
+
 const DRAFT_NAME = PARAMS.get('draft');                 // /build?draft=<name> → open a saved local draft
 async function openDraftByName(name) {
   els.play.textContent = 'LOADING “' + name + '”…';
@@ -2679,7 +3005,8 @@ async function openDraftByName(name) {
 }
 
 dbg('route: slug=' + JSON.stringify(WORLD_SLUG) + ' draft=' + JSON.stringify(DRAFT_NAME) + ' build=' + BUILD_MODE + ' path=' + PATH);
-if (WORLD_SLUG) loadPublishedWorld(WORLD_SLUG);
+if (WORLD_SLUG && BUILTIN_WORLDS[WORLD_SLUG]) loadBuiltinWorld(BUILTIN_WORLDS[WORLD_SLUG]);
+else if (WORLD_SLUG) loadPublishedWorld(WORLD_SLUG);
 else if (DRAFT_NAME) openDraftByName(DRAFT_NAME);
 else if (BUILD_MODE) startBuilder();
 else boot().catch(e => { console.error(e); dbg('X boot failed: ' + e.message); els.play.textContent = 'ERROR: ' + e.message; });

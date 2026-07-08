@@ -47,9 +47,11 @@ const NAV_DEFAULTS = {
   moveRamp:         8.0,    // forward speed ease in/out
   jabVelocity:      1.1,    // upward index jab → jump
   mouseSensitivity: 0.0026,
+  touchLookSensitivity: 0.0042, // rad of look per px of one-finger screen drag (touchscreen turn/look)
   turnSpeed:        2.2,    // rad/sec — keyboard turn (← → / Q E), joystick-style
   lookKeySpeed:     1.8,    // rad/sec — keyboard look up/down (↑ ↓)
   dollySensitivity: 0.012,  // metres of forward/back dolly per unit of wheel/touchpad scroll
+  trackpadTurnSensitivity: 0.0020,  // rad of turn per px of horizontal two-finger trackpad swipe (steer heading)
   zoomSensitivity:  60,     // FOV degrees per unit of two-hand spread change
   handStableFrames: 4,      // a hand must persist this many frames before it can steer
   handRaiseMaxY:    0.82,   // wrist must be above this (0=top,1=bottom) → genuinely "in the air"
@@ -70,6 +72,12 @@ export class AvatarNavigator {
     this._mousePitch = 0;
     this._dragging = false;
 
+    // On-screen touch joystick (a separate UI widget calls setJoystick each drag).
+    // Axes are -1..1: strafe (+ = right), forward (+ = walk forward). Treated as
+    // tactile input, on the same authoritative tier as keyboard/mouse.
+    this._joyStrafe = 0;
+    this._joyForward = 0;
+
     // Gesture state
     this._prevIndexTipY = null;
     this._lastGesture = 'none';
@@ -89,6 +97,12 @@ export class AvatarNavigator {
   }
 
   setMode(mode) { this.mode = mode; }
+
+  /** On-screen touch joystick → walk. strafe/forward are -1..1 (0,0 = released). */
+  setJoystick(strafe, forward) {
+    this._joyStrafe  = THREE.MathUtils.clamp(strafe  || 0, -1, 1);
+    this._joyForward = THREE.MathUtils.clamp(forward || 0, -1, 1);
+  }
 
   // ── AI / voice command hooks ──────────────────────────────────
   faceLevel()        { this.pitch = 0; }
@@ -132,8 +146,49 @@ export class AvatarNavigator {
         this._mouseYaw   -= e.movementX * this.cfg.mouseSensitivity;
         this._mousePitch -= e.movementY * this.cfg.mouseSensitivity;
       });
-      // Wheel / touchpad scroll → dolly the avatar forward / back through the scene.
-      domElement.addEventListener('wheel', e => { this._dolly += -e.deltaY * this.cfg.dollySensitivity; }, { passive: true });
+      // Wheel / touchpad scroll → navigate. A horizontal-dominant two-finger trackpad swipe
+      // TURNS the avatar (steer your heading / where you walk); a vertical scroll dollies you
+      // forward / back. Mouse wheels only emit deltaY, so wheel-dolly is unchanged and the
+      // turn gesture is trackpad-only (never fights the wheel). Pinch (ctrlKey) is left alone.
+      domElement.addEventListener('wheel', e => {
+        if (!e.ctrlKey && e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+          const px = e.deltaMode === 1 ? e.deltaX * 16 : e.deltaX;   // normalise line-mode → px
+          this._mouseYaw -= px * this.cfg.trackpadTurnSensitivity;
+        } else {
+          this._dolly += -e.deltaY * this.cfg.dollySensitivity;
+        }
+      }, { passive: true });
+
+      // ── TOUCHSCREEN drag-to-look ──────────────────────────────────────────────
+      // One finger dragging on the scene turns (yaw) and looks (pitch), exactly like
+      // the mouse-drag look — this is how you steer your heading on a phone/tablet.
+      // Feeds the same yaw/pitch accumulator, so it interleaves with every other
+      // input. Touches that begin on the joystick or any UI button never reach the
+      // canvas (they're separate elements stacked above it), so this only fires on
+      // the open scene. A second finger here while a thumb holds the joystick gives
+      // natural twin-stick "move + look" at once.
+      let lookTouch = null, lastTX = 0, lastTY = 0;
+      domElement.addEventListener('touchstart', e => {
+        if (this.buildMode) return;                 // build mode: touches belong to the editor gizmo
+        if (lookTouch !== null) return;             // already tracking a look finger
+        const t = e.changedTouches[0];
+        lookTouch = t.identifier; lastTX = t.clientX; lastTY = t.clientY;
+      }, { passive: true });
+      domElement.addEventListener('touchmove', e => {
+        if (lookTouch === null) return;
+        for (const t of e.changedTouches) {
+          if (t.identifier !== lookTouch) continue;
+          const dx = t.clientX - lastTX, dy = t.clientY - lastTY;
+          lastTX = t.clientX; lastTY = t.clientY;
+          this._mouseYaw   -= dx * this.cfg.touchLookSensitivity;
+          this._mousePitch -= dy * this.cfg.touchLookSensitivity;
+          if (e.cancelable) e.preventDefault();     // stop the page scrolling/zooming under the drag
+        }
+      }, { passive: false });
+      const endLookTouch = e => { for (const t of e.changedTouches) if (t.identifier === lookTouch) lookTouch = null; };
+      domElement.addEventListener('touchend', endLookTouch);
+      domElement.addEventListener('touchcancel', endLookTouch);
+
       domElement.style.cursor = 'grab';
     }
   }
@@ -154,6 +209,11 @@ export class AvatarNavigator {
     if (this.keys['KeyS']) kForward -= 1;
     if (this.keys['KeyD']) kStrafe  += 1;
     if (this.keys['KeyA']) kStrafe  -= 1;
+    // On-screen touch joystick adds to the same axes (up = walk forward, sideways = strafe).
+    kForward += this._joyForward;
+    kStrafe  += this._joyStrafe;
+    kForward = THREE.MathUtils.clamp(kForward, -1, 1);
+    kStrafe  = THREE.MathUtils.clamp(kStrafe,  -1, 1);
 
     let kYaw = 0, kPitch = 0;
     if (this.keys['ArrowLeft']  || this.keys['KeyQ']) kYaw   += 1;   // turn left
